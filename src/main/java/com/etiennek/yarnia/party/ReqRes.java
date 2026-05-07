@@ -2,6 +2,10 @@ package com.etiennek.yarnia.party;
 
 import java.util.UUID;
 
+import org.hibernate.validator.constraints.Length;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,6 +17,7 @@ public final class ReqRes {
     @NoArgsConstructor(force = true, access = AccessLevel.PRIVATE)
     @RequiredArgsConstructor
     public static class CreatePartyRequest {
+        @Length(min = 1, max = 12)
         private final String playerName;
     }
 
@@ -35,7 +40,10 @@ public final class ReqRes {
     @NoArgsConstructor(force = true, access = AccessLevel.PRIVATE)
     @RequiredArgsConstructor
     public static class JoinPartyRequest {
+        @NotBlank
+        @Length(min = 6, max = 6)
         private final String joinCode;
+        @Length(min = 1, max = 12)
         private final String playerName;
     }
 
@@ -56,8 +64,11 @@ public final class ReqRes {
     @NoArgsConstructor(force = true, access = AccessLevel.PRIVATE)
     @RequiredArgsConstructor
     public static class VerifyJoinRequest {
+        @NotNull
         private final UUID partyId;
+        @NotNull
         private final UUID playerId;
+        @NotNull
         private final UUID joinToken;
     }
 
@@ -71,6 +82,7 @@ public final class ReqRes {
     @NoArgsConstructor(force = true, access = AccessLevel.PRIVATE)
     @RequiredArgsConstructor
     public static class ClosePartyRequest {
+        @NotNull
         private final UUID partyId;
     }
 }

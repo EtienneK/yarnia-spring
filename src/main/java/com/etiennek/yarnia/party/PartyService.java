@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 
 import com.etiennek.yarnia.party.Entities.Party;
 import com.etiennek.yarnia.party.Entities.PartyJoinToken;
@@ -15,14 +16,17 @@ import com.etiennek.yarnia.party.ReqRes.JoinPartyResponse;
 import com.etiennek.yarnia.party.ReqRes.VerifyJoinRequest;
 import com.etiennek.yarnia.party.ReqRes.VerifyJoinResponse;
 
+import jakarta.validation.Valid;
+
 @Service
+@Validated
 public class PartyService {
 
 
     private @Autowired PartyRepository partyRepository;
     private @Autowired PartyJoinTokenRepository partyJoinTokenRepository;
 
-    public CreatePartyResponse createParty(CreatePartyRequest request) {
+    public CreatePartyResponse createParty(@Valid CreatePartyRequest request) {
         final var playerName = request.getPlayerName();
         final var playerId = UUID.randomUUID();
 
@@ -46,7 +50,7 @@ public class PartyService {
         );
     }
 
-    public JoinPartyResponse joinParty(JoinPartyRequest request) {
+    public JoinPartyResponse joinParty(@Valid JoinPartyRequest request) {
         final var party = partyRepository.findByJoinCode(request.getJoinCode()).orElseThrow();
 
         final var playerName = request.getPlayerName();
@@ -61,7 +65,7 @@ public class PartyService {
         );
     }
 
-    public VerifyJoinResponse verifyJoin(VerifyJoinRequest request) {
+    public VerifyJoinResponse verifyJoin(@Valid VerifyJoinRequest request) {
         return new VerifyJoinResponse(
             partyJoinTokenRepository.existsByIdAndPartyIdAndPlayerId(
                 request.getJoinToken(),
@@ -74,7 +78,7 @@ public class PartyService {
     public void updatePartySize() {
     }
 
-    public void closeParty(ClosePartyRequest request) {
+    public void closeParty(@Valid ClosePartyRequest request) {
         partyRepository.deleteById(request.getPartyId());
         partyJoinTokenRepository.deleteByPartyId(request.getPartyId());
     }
