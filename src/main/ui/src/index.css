@@ -1,0 +1,2 @@
+@import "tailwindcss";
+@plugin "daisyui/index.js"; /** @see: https://github.com/saadeghi/daisyui/issues/4505 */
