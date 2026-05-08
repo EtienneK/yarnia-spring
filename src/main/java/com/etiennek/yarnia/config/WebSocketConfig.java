@@ -1,5 +1,7 @@
 package com.etiennek.yarnia.config;
 
+import java.util.regex.Pattern;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,9 +56,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
             if (StompCommand.SUBSCRIBE.equals(command)) {
                 final var destination = accessor.getDestination();
-                if (destination.startsWith("/topic/party/")) {
+                if (destination.startsWith("/topic/party") && destination.endsWith("/join")) {
+                    final var partyId = destination
+                        .replaceFirst("\\/topic\\/party\\/", "")
+                        .replaceFirst("\\/join", "");
                     final var attributes = accessor.getSessionAttributes();
-                    final var partyId = (String) attributes.get("partyId");
                     final var playerId = (String) attributes.get(partyId + ".playerId");
                     final var joinToken = (String) attributes.get(partyId + ".joinToken");
 
@@ -64,8 +68,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     if (partyId != null && playerId != null && joinToken != null) {
                         try {
                             final var verifyJoinResponse = partyService.verifyJoin(
-                                new VerifyJoinRequest(partyId, playerId, joinToken)
-                            );
+                                    new VerifyJoinRequest(partyId, playerId, joinToken));
                             isAllowed = verifyJoinResponse.isAllowed();
                         } catch (IllegalArgumentException e) {
                             isAllowed = false;
