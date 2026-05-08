@@ -17,8 +17,6 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-
-
 @RestController
 @RequestMapping("/api/party")
 public class PartyController {
@@ -37,4 +35,5 @@ public class PartyController {
             return ResponseEntity.notFound().build();
         }
     }
+
 }

@@ -70,6 +70,12 @@ public final class ReqRes {
         private final UUID playerId;
         @NotNull
         private final UUID joinToken;
+
+        public VerifyJoinRequest(String partyId, String playerId, String joinToken) {
+            this.partyId = UUID.fromString(partyId);
+            this.playerId = UUID.fromString(playerId);
+            this.joinToken = UUID.fromString(joinToken);
+        }
     }
 
     @Data

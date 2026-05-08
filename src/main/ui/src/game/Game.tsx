@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { PartyMatchInfo } from "./Menu.tsx";
 import { MIN_PARTY_SIZE } from "./rules.ts";
 import Hero from "../components/Hero.tsx";
@@ -31,6 +31,7 @@ export function Game({
     matchInfo: PartyMatchInfo;
     onLeave: () => void;
 }) {
+    const [connectionError, setConnectionError] = useState<string | null>(null);
     const [snapshot, setSnapshot] = useState<PartySnapshot | null>(null);
     const [nameInput, setNameInput] = useState(
         matchInfo.playerName || "Player",
@@ -39,25 +40,28 @@ export function Game({
     const [messages, setMessages] = useState<string[]>([]);
     const webSocketUrl = window.location.origin + "/ws";
 
-    const { connect, subscribe, send, unsubscribe, disconnect } =
-        useWebSocketService(
-            webSocketUrl,
-            () => console.log("Connected!"),
-            (error) => console.log("WebSocket Error:", error),
-        );
-
-    useEffect(() => {
-        connect().then(() => {
-            subscribe("/topic/greetings", (message: { content: string }) => {
-                setMessages((prevMessages) => [...prevMessages, message.content]);
-            });
-        });
-
-        return () => {
-            unsubscribe("/topic/greetings");
-            disconnect();
-        };
-    }, []);
+    const { publish } = useWebSocketService(
+        webSocketUrl,
+        (subscribe) => {
+            subscribe(
+                "/topic/party/" + matchInfo.playerId,
+                (message: { content: string }) => {
+                    setMessages((prevMessages) => [
+                        ...prevMessages,
+                        message.content,
+                    ]);
+                },
+            );
+        },
+        (error, disconnect) => {
+            if (error?.headers?.message === "forbidden") {
+                setConnectionError("Unauthorised.");
+                disconnect();
+            } else {
+                console.error(error);
+            }
+        },
+    );
 
     // const botsRef = useRef<PartyBot[]>([]);
     const nameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -129,12 +133,21 @@ export function Game({
         return (
             <Hero>
                 <p className="mb-5">
-                    <span className="loading loading-spinner loading-sm mr-2"></span>
-                    Connecting to{" "}
-                    <span className="font-bold font-mono">
-                        {matchInfo.joinCode}
-                    </span>
-                    ...
+                    {!connectionError && (
+                        <>
+                            <span className="loading loading-spinner loading-sm mr-2"></span>
+                            Connecting to{" "}
+                            <span className="font-bold font-mono">
+                                {matchInfo.joinCode}
+                            </span>
+                            ...
+                        </>
+                    )}
+                    {connectionError && (
+                        <>
+                            {connectionError}
+                        </>
+                    )}
                 </p>
                 <button
                     className="btn btn-secondary"
@@ -144,17 +157,6 @@ export function Game({
                 >
                     Leave
                 </button>
-
-                <p>Messages:</p>
-                {messages.map((msg, index) => (
-                    <p key={index}>{msg}</p>
-                ))}
-                <button
-                    title="Send Message"
-                    onClick={() =>
-                        send("/app/hello", "STOMP")
-                    }
-                >Send</button>
             </Hero>
         );
     }

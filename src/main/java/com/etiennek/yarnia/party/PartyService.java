@@ -22,7 +22,6 @@ import jakarta.validation.Valid;
 @Validated
 public class PartyService {
 
-
     private @Autowired PartyRepository partyRepository;
     private @Autowired PartyJoinTokenRepository partyJoinTokenRepository;
 
@@ -46,8 +45,7 @@ public class PartyService {
                 playerId,
                 playerName == null ? generatePlayerName() : playerName,
                 party.getJoinCode(),
-                partyJoinToken.getId()
-        );
+                partyJoinToken.getId());
     }
 
     public JoinPartyResponse joinParty(@Valid JoinPartyRequest request) {
@@ -58,21 +56,19 @@ public class PartyService {
         final var partyJoinToken = partyJoinTokenRepository.save(new PartyJoinToken(party.getId(), playerId));
 
         return new JoinPartyResponse(
-            party.getId(),
-            playerId,
-            playerName == null ? generatePlayerName() : playerName,
-            partyJoinToken.getId()
-        );
+                party.getId(),
+                playerId,
+                playerName == null ? generatePlayerName() : playerName,
+                partyJoinToken.getId());
     }
 
     public VerifyJoinResponse verifyJoin(@Valid VerifyJoinRequest request) {
-        return new VerifyJoinResponse(
-            partyJoinTokenRepository.existsByIdAndPartyIdAndPlayerId(
+        final var allowed = partyJoinTokenRepository.existsByIdAndPartyIdAndPlayerId(
                 request.getJoinToken(),
                 request.getPlayerId(),
-                request.getPlayerId()
-            )
-        );
+                request.getPlayerId());
+        return new VerifyJoinResponse(
+                allowed);
     }
 
     public void updatePartySize() {
