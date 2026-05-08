@@ -36,11 +36,14 @@ export function Game({
   const [nameInput, setNameInput] = useState(matchInfo.playerName || "Player");
 
   const [messages, setMessages] = useState<string[]>([]);
-  const webSocketUrl = window.location.origin + "/ws";
 
-  const { publish } = useWebSocketService(
-    webSocketUrl,
-    (subscribe) => {
+  const { publish } = useWebSocketService({
+    connectHeaders: {
+      partyId: matchInfo.partyId,
+      playerId: matchInfo.playerId,
+      joinToken: matchInfo.joinToken,
+    },
+    onConnectCallback: (subscribe) => {
       subscribe(
         "/topic/party/" + matchInfo.partyId + "/join",
         (message: { content: string }) => {
@@ -48,7 +51,7 @@ export function Game({
         },
       );
     },
-    (error, disconnect) => {
+    onErrorCallback: (error, disconnect) => {
       if (error?.headers?.message === "forbidden") {
         setConnectionError("Unauthorised.");
         disconnect();
@@ -56,7 +59,7 @@ export function Game({
         console.error(error);
       }
     },
-  );
+  });
 
   // const botsRef = useRef<PartyBot[]>([]);
   const nameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);

@@ -18,7 +18,6 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
-import com.etiennek.yarnia.config.WebSocketConfig.MyChannelInterceptor;
 import com.etiennek.yarnia.party.PartyService;
 import com.etiennek.yarnia.party.ReqRes.VerifyJoinRequest;
 
@@ -54,12 +53,23 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
             StompCommand command = accessor.getCommand();
 
-            if (StompCommand.SUBSCRIBE.equals(command)) {
+            if (StompCommand.CONNECT.equals(command)) {
+                final var partyId = accessor.getFirstNativeHeader("partyId");
+                final var joinToken = accessor.getFirstNativeHeader("joinToken");
+                final var playerId = accessor.getFirstNativeHeader("playerId");
+
+                if (partyId != null && joinToken != null && playerId != null) {
+                    final var attributes = accessor.getSessionAttributes();
+                    attributes.put(partyId + ".playerId", playerId);
+                    attributes.put(partyId + ".joinToken", joinToken);
+                    accessor.setSessionAttributes(attributes);
+                }
+            } else if (StompCommand.SUBSCRIBE.equals(command)) {
                 final var destination = accessor.getDestination();
                 if (destination.startsWith("/topic/party") && destination.endsWith("/join")) {
                     final var partyId = destination
-                        .replaceFirst("\\/topic\\/party\\/", "")
-                        .replaceFirst("\\/join", "");
+                            .replaceFirst("\\/topic\\/party\\/", "")
+                            .replaceFirst("\\/join", "");
                     final var attributes = accessor.getSessionAttributes();
                     final var playerId = (String) attributes.get(partyId + ".playerId");
                     final var joinToken = (String) attributes.get(partyId + ".joinToken");

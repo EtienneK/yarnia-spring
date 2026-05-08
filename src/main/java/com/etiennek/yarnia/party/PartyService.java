@@ -65,7 +65,7 @@ public class PartyService {
     public VerifyJoinResponse verifyJoin(@Valid VerifyJoinRequest request) {
         final var allowed = partyJoinTokenRepository.existsByIdAndPartyIdAndPlayerId(
                 request.getJoinToken(),
-                request.getPlayerId(),
+                request.getPartyId(),
                 request.getPlayerId());
         return new VerifyJoinResponse(
                 allowed);
