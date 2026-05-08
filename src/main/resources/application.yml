@@ -3,3 +3,6 @@ server:
 spring:
     application:
         name: yarnia
+    threads:
+        virtual:
+            enabled: true

@@ -47,17 +47,17 @@ export function Game({
         );
 
     useEffect(() => {
-        connect();
-
-        subscribe("/topic/greetings", (message) => {
-            setMessages((prevMessages) => [...prevMessages, message.text]);
+        connect().then(() => {
+            subscribe("/topic/greetings", (message: { content: string }) => {
+                setMessages((prevMessages) => [...prevMessages, message.content]);
+            });
         });
 
         return () => {
             unsubscribe("/topic/greetings");
             disconnect();
         };
-    }, [connect, subscribe, unsubscribe, disconnect]);
+    }, []);
 
     // const botsRef = useRef<PartyBot[]>([]);
     const nameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -152,7 +152,7 @@ export function Game({
                 <button
                     title="Send Message"
                     onClick={() =>
-                        send("/app/hello", { text: "Hello, STOMP!" })
+                        send("/app/hello", "STOMP")
                     }
                 >Send</button>
             </Hero>
