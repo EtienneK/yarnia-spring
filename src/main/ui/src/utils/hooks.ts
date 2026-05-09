@@ -72,6 +72,7 @@ export const useWebSocketService = ({
   );
 
   const publish = useCallback(<T>(destination: string, body: T) => {
+
     const client = stompClientRef.current;
     if (!client?.connected) return;
 
