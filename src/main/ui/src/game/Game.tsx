@@ -60,11 +60,13 @@ export function Game({
       debug: (msg) => {
         console.log("stomp - ", msg);
       },
-      heartbeatIncoming: 0,
-      heartbeatOutgoing: 20000,
-      reconnectDelay: 200,
-      connectionTimeout: 5000,
+      reconnectDelay: 5_000,
+      heartbeatIncoming: 1_000,
+      heartbeatOutgoing: 1_000,
+      connectionTimeout: 5_000,
     });
+
+    client.activate();
 
     const errorSub = client.stompErrors$.subscribe((error) => {
       if (error?.headers?.message === "forbidden") {
@@ -75,9 +77,14 @@ export function Game({
       }
     });
 
-    client.activate();
-
     const snapshotTopicSub = client
+      .watch(`/topic/party/${partyInfo.partyId}/snapshot`)
+      .pipe(map((message) => JSON.parse(message.body)))
+      .subscribe((message) => {
+        setSnapshot(message);
+      });
+
+    const snapshotQueueSub = client
       .watch("/user/queue/snapshot")
       .pipe(map((message) => JSON.parse(message.body)))
       .subscribe((message) => {
@@ -95,40 +102,10 @@ export function Game({
       connectedSub.unsubscribe();
       errorSub.unsubscribe();
       snapshotTopicSub.unsubscribe();
+      snapshotQueueSub.unsubscribe();
       client.deactivate();
     };
   }, [partyInfo.joinToken, partyInfo.partyId, partyInfo.playerId, publish]);
-
-  // useWebSocketService({
-  //   connectHeaders: {
-  //     partyId: partyInfo.partyId,
-  //     playerId: partyInfo.playerId,
-  //     joinToken: partyInfo.joinToken,
-  //   },
-  //   onConnectCallback: ({subscribe, publish}) => {
-  //     subscribe(
-  //       "/topic/party/" + partyInfo.partyId + "/snapshot",
-  //       (snapshot: PartySnapshot) => {
-  //         setSnapshot(snapshot);
-  //       },
-  //     );
-  //     subscribe(
-  //       "/user/queue/snapshot",
-  //       (snapshot: PartySnapshot) => {
-  //         setSnapshot(snapshot);
-  //       },
-  //     );
-  //     setTimeout(() => {publish(`/app/party/${partyInfo.partyId}/snapshot`, { partyId: partyInfo.partyId })}, 4000);
-  //   },
-  //   onErrorCallback: (error, disconnect) => {
-  //     if (error?.headers?.message === "forbidden") {
-  //       setConnectionError("Unauthorised.");
-  //       disconnect();
-  //     } else {
-  //       console.error(error);
-  //     }
-  //   },
-  // });
 
   // const botsRef = useRef<PartyBot[]>([]);
   const nameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -143,7 +120,6 @@ export function Game({
   //     enabled: true,
   //   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   //   (partyMatch as any).useEvent(
   //     'partyUpdate',
   //     (partySnapshot: PartySnapshot): void => {
