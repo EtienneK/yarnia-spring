@@ -1,7 +1,5 @@
 package com.etiennek.yarnia.config;
 
-import java.util.regex.Pattern;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,7 +64,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 }
             } else if (StompCommand.SUBSCRIBE.equals(command)) {
                 final var destination = accessor.getDestination();
-                if (destination.startsWith("/topic/party") && destination.endsWith("/join")) {
+                if (destination.startsWith("/topic/party") && destination.endsWith("/snapshot")) {
                     final var partyId = destination
                             .replaceFirst("\\/topic\\/party\\/", "")
                             .replaceFirst("\\/join", "");

@@ -9,7 +9,7 @@ import { useWebSocketService } from "../utils/hooks.ts";
 export type GamePhase = "waiting" | "playing" | "finished";
 
 export interface PartySnapshot {
-  matchId: string;
+  partyId: string;
   partyCode: string;
   phase: GamePhase;
   members: Record<
@@ -35,8 +35,6 @@ export function Game({
   const [snapshot, setSnapshot] = useState<PartySnapshot | null>(null);
   const [nameInput, setNameInput] = useState(matchInfo.playerName || "Player");
 
-  const [messages, setMessages] = useState<string[]>([]);
-
   const { publish } = useWebSocketService({
     connectHeaders: {
       partyId: matchInfo.partyId,
@@ -45,9 +43,9 @@ export function Game({
     },
     onConnectCallback: (subscribe) => {
       subscribe(
-        "/topic/party/" + matchInfo.partyId + "/join",
-        (message: { content: string }) => {
-          setMessages((prevMessages) => [...prevMessages, message.content]);
+        "/topic/party/" + matchInfo.partyId + "/snapshot",
+        (snapshot: PartySnapshot) => {
+          setSnapshot(snapshot);
         },
       );
     },
@@ -126,7 +124,7 @@ export function Game({
   const waitingForReady = () => memberList.findIndex((m) => !m[1].isReady) > -1;
   const needMorePlayers = () => MIN_PARTY_SIZE - memberList.length > 0;
 
-  if (/*partyMatch.connStatus !== 'connected' ||*/ snapshot == null) {
+  if (/*partyMatch.connStatus !== 'connected' ||*/ !snapshot || connectionError) {
     return (
       <Hero>
         <p className="mb-5">
