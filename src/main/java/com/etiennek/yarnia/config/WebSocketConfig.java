@@ -12,6 +12,7 @@ import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
@@ -46,6 +47,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public class MyChannelInterceptor implements ChannelInterceptor {
         private static final Logger logger = LoggerFactory.getLogger(MyChannelInterceptor.class);
 
+        private static final AntPathMatcher patternMatcher = new AntPathMatcher();
+        private static final String subscribePartyDestinationPattern = "/topic/party/{partyId}/{route}";
+
         @Override
         public Message<?> preSend(Message<?> message, MessageChannel channel) {
             StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
@@ -64,10 +68,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 }
             } else if (StompCommand.SUBSCRIBE.equals(command)) {
                 final var destination = accessor.getDestination();
-                if (destination.startsWith("/topic/party") && destination.endsWith("/snapshot")) {
-                    final var partyId = destination
-                            .replaceFirst("\\/topic\\/party\\/", "")
-                            .replaceFirst("\\/join", "");
+
+                if (destination.startsWith("/topic/party")) {
+                    final var templateVariables = patternMatcher.extractUriTemplateVariables(subscribePartyDestinationPattern, destination);
+                    final var partyId = templateVariables.get("partyId");
                     final var attributes = accessor.getSessionAttributes();
                     final var playerId = (String) attributes.get(partyId + ".playerId");
                     final var joinToken = (String) attributes.get(partyId + ".joinToken");
