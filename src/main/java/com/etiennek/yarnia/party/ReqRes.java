@@ -1,5 +1,7 @@
 package com.etiennek.yarnia.party;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import org.hibernate.validator.constraints.Length;
@@ -90,5 +92,38 @@ public final class ReqRes {
     public static class ClosePartyRequest {
         @NotNull
         private final UUID partyId;
+    }
+
+    public static enum PartyPhase {
+        WAITING, PLAYING, FINISHED
+    }
+
+    @Data
+    @RequiredArgsConstructor
+    public static class PartyMemberSnapshotResponse {
+        private final String name;
+        private final String color;
+        private final boolean isHost;
+        private final boolean isReady;
+        private final boolean connected;
+    }
+
+    @Data
+    @NoArgsConstructor(force = true, access = AccessLevel.PRIVATE)
+    @RequiredArgsConstructor
+    public static class GetPartySnapshotRequest {
+        @NotNull
+        private final UUID partyId;
+
+        public GetPartySnapshotRequest(String partyId) {
+            this.partyId = UUID.fromString(partyId);
+        }
+    }
+
+    @Data
+    @RequiredArgsConstructor
+    public static class GetPartySnapshotResponse {
+        private final PartyPhase partyPhase;
+        private final Map<String, PartyMemberSnapshotResponse> members = new HashMap<>();
     }
 }

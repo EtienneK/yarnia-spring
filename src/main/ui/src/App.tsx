@@ -27,7 +27,7 @@ export default function App() {
 
   const goHome = () => setRoute({ page: 'home' })
   const goMenu = () => setRoute({ page: 'menu' })
-  const goGame = (matchInfo: unknown) => setRoute({ page: 'game', matchInfo })
+  const goGame = (partyInfo: unknown) => setRoute({ page: 'game', matchInfo: partyInfo })
 
   if (route.page === 'home') {
     return <Home onClick={goMenu} />
@@ -44,7 +44,7 @@ export default function App() {
 
   if (route.page === 'game') {
     const props = {
-      matchInfo: route.matchInfo as never,
+      partyInfo: route.matchInfo as never,
       onLeave: goHome,
     }
 

@@ -9,8 +9,6 @@ import { useWebSocketService } from "../utils/hooks.ts";
 export type GamePhase = "waiting" | "playing" | "finished";
 
 export interface PartySnapshot {
-  partyId: string;
-  partyCode: string;
   phase: GamePhase;
   members: Record<
     string,
@@ -25,29 +23,36 @@ export interface PartySnapshot {
 }
 
 export function Game({
-  matchInfo,
+  partyInfo,
   onLeave,
 }: {
-  matchInfo: PartyMatchInfo;
+  partyInfo: PartyMatchInfo;
   onLeave: () => void;
 }) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<PartySnapshot | null>(null);
-  const [nameInput, setNameInput] = useState(matchInfo.playerName || "Player");
+  const [nameInput, setNameInput] = useState(partyInfo.playerName || "Player");
 
   const { publish } = useWebSocketService({
     connectHeaders: {
-      partyId: matchInfo.partyId,
-      playerId: matchInfo.playerId,
-      joinToken: matchInfo.joinToken,
+      partyId: partyInfo.partyId,
+      playerId: partyInfo.playerId,
+      joinToken: partyInfo.joinToken,
     },
     onConnectCallback: (subscribe) => {
       subscribe(
-        "/topic/party/" + matchInfo.partyId + "/snapshot",
+        "/topic/party/" + partyInfo.partyId + "/snapshot",
         (snapshot: PartySnapshot) => {
           setSnapshot(snapshot);
         },
       );
+      subscribe(
+        `/user/snapshot`,
+        (snapshot: PartySnapshot) => {
+          setSnapshot(snapshot);
+        },
+      );
+      publish(`/app/party/${partyInfo.partyId}/snapshot`, { partyId: partyInfo.partyId })
     },
     onErrorCallback: (error, disconnect) => {
       if (error?.headers?.message === "forbidden") {
@@ -117,14 +122,17 @@ export function Game({
     //partyMatch.connection?.finishGame().catch(() => {})
   };
 
-  const myMember = snapshot?.members[matchInfo.playerId];
+  const myMember = snapshot?.members[partyInfo.playerId];
   const isHost = myMember?.isHost ?? false;
   const memberList = snapshot ? Object.entries(snapshot.members) : [];
 
   const waitingForReady = () => memberList.findIndex((m) => !m[1].isReady) > -1;
   const needMorePlayers = () => MIN_PARTY_SIZE - memberList.length > 0;
 
-  if (/*partyMatch.connStatus !== 'connected' ||*/ !snapshot || connectionError) {
+  if (
+    /*partyMatch.connStatus !== 'connected' ||*/ !snapshot ||
+    connectionError
+  ) {
     return (
       <Hero>
         <p className="mb-5">
@@ -132,7 +140,7 @@ export function Game({
             <>
               <span className="loading loading-spinner loading-sm mr-2"></span>
               Connecting to{" "}
-              <span className="font-bold font-mono">{matchInfo.joinCode}</span>
+              <span className="font-bold font-mono">{partyInfo.joinCode}</span>
               ...
             </>
           )}
@@ -157,7 +165,7 @@ export function Game({
           <div className="mb-10">
             <div className="text-xl mb-1 text-gray-500">Join Code:</div>
             <div className="font-mono text-4xl tracking-widest text-center">
-              {matchInfo.joinCode}
+              {partyInfo.joinCode}
             </div>
           </div>
 
@@ -188,7 +196,7 @@ export function Game({
                   style={{ color: member.color }}
                 >
                   {member.name}
-                  {id === matchInfo.playerId ? " (You)" : ""}
+                  {id === partyInfo.playerId ? " (You)" : ""}
                 </span>
                 <span className="party-member-badges">
                   {member.isHost && (

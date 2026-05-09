@@ -44,6 +44,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .withSockJS();
     }
 
+    // TOREAD:
+    // https://stackoverflow.com/questions/21312222/how-to-reply-to-unauthenticated-user-in-spring-4-stomp-over-websocket-configurat
+    // https://stackoverflow.com/questions/25082148/spring-websockets-sendtouser-without-login
+
     public class MyChannelInterceptor implements ChannelInterceptor {
         private static final Logger logger = LoggerFactory.getLogger(MyChannelInterceptor.class);
 
@@ -65,36 +69,47 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     attributes.put(partyId + ".playerId", playerId);
                     attributes.put(partyId + ".joinToken", joinToken);
                     accessor.setSessionAttributes(attributes);
+                    verifyJoinRequest(partyId, playerId, joinToken, command, null);
+                } else {
+                    logger.warn("missing attributes for CONNECT command");
+                    throw new MessagingException("forbidden");
                 }
             } else if (StompCommand.SUBSCRIBE.equals(command)) {
                 final var destination = accessor.getDestination();
 
                 if (destination.startsWith("/topic/party")) {
-                    final var templateVariables = patternMatcher.extractUriTemplateVariables(subscribePartyDestinationPattern, destination);
+                    final var templateVariables = patternMatcher
+                            .extractUriTemplateVariables(subscribePartyDestinationPattern, destination);
                     final var partyId = templateVariables.get("partyId");
                     final var attributes = accessor.getSessionAttributes();
                     final var playerId = (String) attributes.get(partyId + ".playerId");
                     final var joinToken = (String) attributes.get(partyId + ".joinToken");
 
-                    var isAllowed = false;
-                    if (partyId != null && playerId != null && joinToken != null) {
-                        try {
-                            final var verifyJoinResponse = partyService.verifyJoin(
-                                    new VerifyJoinRequest(partyId, playerId, joinToken));
-                            isAllowed = verifyJoinResponse.isAllowed();
-                        } catch (IllegalArgumentException e) {
-                            isAllowed = false;
-                        }
-                    }
-
-                    if (!isAllowed) {
-                        logger.warn("unallowed subscribe attempt at destination: " + destination);
-                        throw new MessagingException("forbidden");
-                    }
+                    verifyJoinRequest(partyId, playerId, joinToken, command, destination);
                 }
             }
 
             return message;
         }
+
+        private void verifyJoinRequest(String partyId, String playerId, String joinToken, StompCommand command,
+                String destination) {
+            var isAllowed = false;
+            if (partyId != null && playerId != null && joinToken != null) {
+                try {
+                    final var verifyJoinResponse = partyService.verifyJoin(
+                            new VerifyJoinRequest(partyId, playerId, joinToken));
+                    isAllowed = verifyJoinResponse.isAllowed();
+                } catch (IllegalArgumentException e) {
+                    isAllowed = false;
+                }
+            }
+
+            if (!isAllowed) {
+                logger.warn("user unauthorized for command [" + command + "] at destination [" + destination + "]");
+                throw new MessagingException("forbidden");
+            }
+        }
+
     }
 }

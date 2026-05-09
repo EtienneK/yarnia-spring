@@ -11,8 +11,12 @@ import com.etiennek.yarnia.party.Entities.PartyJoinToken;
 import com.etiennek.yarnia.party.ReqRes.ClosePartyRequest;
 import com.etiennek.yarnia.party.ReqRes.CreatePartyRequest;
 import com.etiennek.yarnia.party.ReqRes.CreatePartyResponse;
+import com.etiennek.yarnia.party.ReqRes.GetPartySnapshotRequest;
+import com.etiennek.yarnia.party.ReqRes.GetPartySnapshotResponse;
 import com.etiennek.yarnia.party.ReqRes.JoinPartyRequest;
 import com.etiennek.yarnia.party.ReqRes.JoinPartyResponse;
+import com.etiennek.yarnia.party.ReqRes.PartyMemberSnapshotResponse;
+import com.etiennek.yarnia.party.ReqRes.PartyPhase;
 import com.etiennek.yarnia.party.ReqRes.VerifyJoinRequest;
 import com.etiennek.yarnia.party.ReqRes.VerifyJoinResponse;
 
@@ -77,6 +81,19 @@ public class PartyService {
     public void closeParty(@Valid ClosePartyRequest request) {
         partyRepository.deleteById(request.getPartyId());
         partyJoinTokenRepository.deleteByPartyId(request.getPartyId());
+    }
+
+    public GetPartySnapshotResponse getPartySnapshot(@Valid GetPartySnapshotRequest request) {
+        final var ret = new GetPartySnapshotResponse(PartyPhase.WAITING);
+        ret.getMembers().put(
+                "paryty-id-0128jbrt43kb-tkj43b",
+                new PartyMemberSnapshotResponse(
+                        "bobby",
+                        "#ff00ff",
+                        true,
+                        false,
+                        true));
+        return ret;
     }
 
     private static final int PARTY_CODE_LENGTH = 6;
