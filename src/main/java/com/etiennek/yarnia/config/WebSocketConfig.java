@@ -1,9 +1,14 @@
 package com.etiennek.yarnia.config;
 
+import java.security.Principal;
+import java.util.Map;
+
+import org.apache.catalina.realm.GenericPrincipal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessagingException;
@@ -13,9 +18,11 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.util.AntPathMatcher;
+import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
 
 import com.etiennek.yarnia.party.PartyService;
 import com.etiennek.yarnia.party.ReqRes.VerifyJoinRequest;
@@ -41,7 +48,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOrigins("http://localhost:3000", "https://3k.local.etkhome.com")
-                //.setHandshakeHandler(new CustomHandshakeHandler())
+                .setHandshakeHandler(new CustomHandshakeHandler())
                 .withSockJS();
     }
 
@@ -49,14 +56,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     // https://stackoverflow.com/questions/21312222/how-to-reply-to-unauthenticated-user-in-spring-4-stomp-over-websocket-configurat
     // https://stackoverflow.com/questions/25082148/spring-websockets-sendtouser-without-login
 
-    // class CustomHandshakeHandler extends DefaultHandshakeHandler {
-    //     @Override
-    //     protected Principal determineUser(ServerHttpRequest request,
-    //             WebSocketHandler wsHandler,
-    //             Map<String, Object> attributes) {
-    //         return new GenericPrincipal("123");
-    //     }
-    // }
+    class CustomHandshakeHandler extends DefaultHandshakeHandler {
+        @Override
+        protected Principal determineUser(ServerHttpRequest request,
+                WebSocketHandler wsHandler,
+                Map<String, Object> attributes) {
+            return new GenericPrincipal("123");
+        }
+    }
 
     public class MyChannelInterceptor implements ChannelInterceptor {
         private static final Logger logger = LoggerFactory.getLogger(MyChannelInterceptor.class);
@@ -75,11 +82,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 final var playerId = accessor.getFirstNativeHeader("playerId");
 
                 if (partyId != null && joinToken != null && playerId != null) {
+                    verifyJoinRequest(partyId, playerId, joinToken, command, null);
+
                     final var attributes = accessor.getSessionAttributes();
                     attributes.put(partyId + ".playerId", playerId);
                     attributes.put(partyId + ".joinToken", joinToken);
                     accessor.setSessionAttributes(attributes);
-                    verifyJoinRequest(partyId, playerId, joinToken, command, null);
                 } else {
                     logger.warn("missing attributes for CONNECT command");
                     throw new MessagingException("forbidden");

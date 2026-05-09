@@ -6,6 +6,7 @@ import Hero from "../components/Hero.tsx";
 import { RxStomp } from "@stomp/rx-stomp";
 import SockJS from "sockjs-client/dist/sockjs";
 import { map } from "rxjs";
+import Cookies from 'universal-cookie';
 
 // import { PartyBot } from "./bot.ts";
 
@@ -35,6 +36,18 @@ export function Game({
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<PartySnapshot | null>(null);
   const [nameInput, setNameInput] = useState(partyInfo.playerName || "Player");
+
+  useEffect(() => {
+    const cookies = new Cookies(null, { path: '/' });
+    cookies.set('partyId', partyInfo.partyId);
+    cookies.set('playerId', partyInfo.playerId);
+    cookies.set('joinToken', partyInfo.joinToken);
+    return () => {
+      cookies.remove('partyId');
+      cookies.remove('playerId');
+      cookies.remove('joinToken');
+    };
+  }, [partyInfo.joinToken, partyInfo.partyId, partyInfo.playerId]);
 
   const clientRef = useRef(new RxStomp());
 
