@@ -34,19 +34,29 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         config.setApplicationDestinationPrefixes("/app");
-        config.enableSimpleBroker("/topic");
+        config.enableSimpleBroker("/topic", "/queue");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOrigins("http://localhost:3000", "https://3k.local.etkhome.com")
+                //.setHandshakeHandler(new CustomHandshakeHandler())
                 .withSockJS();
     }
 
     // TOREAD:
     // https://stackoverflow.com/questions/21312222/how-to-reply-to-unauthenticated-user-in-spring-4-stomp-over-websocket-configurat
     // https://stackoverflow.com/questions/25082148/spring-websockets-sendtouser-without-login
+
+    // class CustomHandshakeHandler extends DefaultHandshakeHandler {
+    //     @Override
+    //     protected Principal determineUser(ServerHttpRequest request,
+    //             WebSocketHandler wsHandler,
+    //             Map<String, Object> attributes) {
+    //         return new GenericPrincipal("123");
+    //     }
+    // }
 
     public class MyChannelInterceptor implements ChannelInterceptor {
         private static final Logger logger = LoggerFactory.getLogger(MyChannelInterceptor.class);

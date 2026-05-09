@@ -33,13 +33,13 @@ export function Game({
   const [snapshot, setSnapshot] = useState<PartySnapshot | null>(null);
   const [nameInput, setNameInput] = useState(partyInfo.playerName || "Player");
 
-  const { publish } = useWebSocketService({
+  useWebSocketService({
     connectHeaders: {
       partyId: partyInfo.partyId,
       playerId: partyInfo.playerId,
       joinToken: partyInfo.joinToken,
     },
-    onConnectCallback: (subscribe) => {
+    onConnectCallback: ({subscribe, publish}) => {
       subscribe(
         "/topic/party/" + partyInfo.partyId + "/snapshot",
         (snapshot: PartySnapshot) => {
@@ -47,12 +47,13 @@ export function Game({
         },
       );
       subscribe(
-        `/user/snapshot`,
+        "/user/queue/snapshot",
         (snapshot: PartySnapshot) => {
+          console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>> ", snapshot);
           setSnapshot(snapshot);
         },
       );
-      publish(`/app/party/${partyInfo.partyId}/snapshot`, { partyId: partyInfo.partyId })
+      setTimeout(() => {publish(`/app/party/${partyInfo.partyId}/snapshot`, { partyId: partyInfo.partyId })}, 4000);
     },
     onErrorCallback: (error, disconnect) => {
       if (error?.headers?.message === "forbidden") {

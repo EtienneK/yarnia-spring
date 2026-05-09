@@ -47,12 +47,13 @@ export const useWebSocketService = ({
 }: {
   url?: string;
   connectHeaders?: StompHeaders,
-  onConnectCallback?: (
+  onConnectCallback?: (actions: {
     subscribe: <T>(
       destination: string,
       callback: (body: T) => void,
     ) => StompSubscription | null,
-  ) => void;
+    publish: <T>(destination: string, body: T) => void
+  }) => void;
   onErrorCallback?: (frame: IFrame, disconnect: () => void) => void;
 }) => {
   const stompClientRef = useRef<Client>(null);
@@ -70,6 +71,19 @@ export const useWebSocketService = ({
     [],
   );
 
+  const publish = useCallback(<T>(destination: string, body: T) => {
+    const client = stompClientRef.current;
+    if (!client?.connected) return;
+
+    let bodyStr: string;
+    if (typeof body === "string") {
+      bodyStr = body;
+    } else {
+      bodyStr = JSON.stringify(body);
+    }
+    client.publish({ destination, body: bodyStr });
+  }, []);
+
   const disconnect = useCallback(() => {
     stompClientRef.current?.deactivate();
   }, []);
@@ -83,7 +97,7 @@ export const useWebSocketService = ({
       heartbeatOutgoing: 1000,
       debug: (str) => console.log("stomp-debug: ", str),
       onConnect: () => {
-        onConnectCallback?.(subscribe);
+        onConnectCallback?.({ subscribe, publish });
       },
       onStompError: (frame) => onErrorCallback?.(frame, disconnect),
     });
@@ -100,20 +114,7 @@ export const useWebSocketService = ({
       window.removeEventListener("beforeunload", handleBeforeUnload);
       disconnect();
     };
-  }, [onConnectCallback, onErrorCallback, url, subscribe, disconnect, connectHeaders]);
-
-  const publish = useCallback(<T>(destination: string, body: T) => {
-    const client = stompClientRef.current;
-    if (!client?.connected) return;
-
-    let bodyStr: string;
-    if (typeof body === "string") {
-      bodyStr = body;
-    } else {
-      bodyStr = JSON.stringify(body);
-    }
-    client.publish({ destination, body: bodyStr });
-  }, []);
+  }, [publish, onConnectCallback, onErrorCallback, url, subscribe, disconnect, connectHeaders]);
 
   return { stompClientRef, publish };
 };
