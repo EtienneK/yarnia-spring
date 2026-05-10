@@ -1,13 +1,22 @@
 package com.etiennek.yarnia.party;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
+import com.etiennek.yarnia.party.Constants.PartyPhase;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Data;
@@ -53,4 +62,45 @@ public final class Entities {
         @Column(nullable = false)
         private final UUID playerId;
     }
+
+    @Entity
+    @Data
+    @NoArgsConstructor(access = AccessLevel.PRIVATE, force = true)
+    @RequiredArgsConstructor
+    public static class PartyMember {
+        @Id
+        private final UUID id;
+
+        @Column(nullable = false)
+        private final String name;
+
+        @Column(nullable = false)
+        private final String color;
+
+        @Column(nullable = false)
+        private final boolean isHost;
+
+        @Column(nullable = false)
+        private final boolean isReady;
+
+        @Column(nullable = false)
+        private final boolean connected;
+
+        @ManyToOne(optional = false)
+        private final PartyState partyState;
+    }
+
+    @Entity
+    @Data
+    @NoArgsConstructor(access = AccessLevel.PRIVATE, force = true)
+    @RequiredArgsConstructor
+    public static class PartyState {
+        @Id
+        private final UUID id;
+
+        @Enumerated(EnumType.STRING)
+        @Column(nullable = false)
+        private final PartyPhase partyPhase;
+    }
+
 }

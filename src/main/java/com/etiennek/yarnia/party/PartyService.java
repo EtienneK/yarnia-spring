@@ -6,7 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
+import com.etiennek.yarnia.party.Constants.PartyPhase;
 import com.etiennek.yarnia.party.Entities.Party;
+import com.etiennek.yarnia.party.Entities.PartyState;
+import com.etiennek.yarnia.party.Entities.PartyMember;
 import com.etiennek.yarnia.party.Entities.PartyJoinToken;
 import com.etiennek.yarnia.party.ReqRes.ClosePartyRequest;
 import com.etiennek.yarnia.party.ReqRes.CreatePartyRequest;
@@ -16,7 +19,6 @@ import com.etiennek.yarnia.party.ReqRes.GetPartySnapshotResponse;
 import com.etiennek.yarnia.party.ReqRes.JoinPartyRequest;
 import com.etiennek.yarnia.party.ReqRes.JoinPartyResponse;
 import com.etiennek.yarnia.party.ReqRes.PartyMemberSnapshotResponse;
-import com.etiennek.yarnia.party.ReqRes.PartyPhase;
 import com.etiennek.yarnia.party.ReqRes.VerifyJoinRequest;
 import com.etiennek.yarnia.party.ReqRes.VerifyJoinResponse;
 
@@ -27,10 +29,12 @@ import jakarta.validation.Valid;
 public class PartyService {
 
     private @Autowired PartyRepository partyRepository;
+    private @Autowired PartyStateRepository partyStateRepository;
+    private @Autowired PartyMemberRepository partyMemberRepository;
     private @Autowired PartyJoinTokenRepository partyJoinTokenRepository;
 
     public CreatePartyResponse createParty(@Valid CreatePartyRequest request) {
-        final var playerName = request.getPlayerName();
+        final var playerName = request.getPlayerName() == null ? generatePlayerName() : request.getPlayerName();
         final var playerId = UUID.randomUUID();
 
         String joinCode;
@@ -42,12 +46,23 @@ public class PartyService {
         } while (!uniqueJoinCodeFound && ++uniqueJoinCodeFoundRetries < 5);
 
         final var party = partyRepository.save(new Party(joinCode, 0));
+        final var partyState = new PartyState(party.getId(), PartyPhase.WAITING);
+        partyStateRepository.save(partyState);
+        partyMemberRepository.save(new PartyMember(
+                playerId,
+                playerName,
+                "#ff0000",
+                true,
+                false,
+                true,
+                partyState));
+
         final var partyJoinToken = partyJoinTokenRepository.save(new PartyJoinToken(party.getId(), playerId));
 
         return new CreatePartyResponse(
                 party.getId(),
                 playerId,
-                playerName == null ? generatePlayerName() : playerName,
+                playerName,
                 party.getJoinCode(),
                 partyJoinToken.getId());
     }
@@ -84,15 +99,24 @@ public class PartyService {
     }
 
     public GetPartySnapshotResponse getPartySnapshot(@Valid GetPartySnapshotRequest request) {
-        final var ret = new GetPartySnapshotResponse(PartyPhase.WAITING);
-        ret.getMembers().put(
-                "paryty-id-0128jbrt43kb-tkj43b",
-                new PartyMemberSnapshotResponse(
-                        "bobby",
-                        "#ff00ff",
-                        true,
-                        false,
-                        true));
+        final var partyState = partyStateRepository
+                .findById(request.getPartyId())
+                .orElseThrow(() -> new IllegalStateException("party state doesn't exist"));
+
+        final var members = partyMemberRepository.findByPartyStateId(request.getPartyId());
+
+        final var ret = new GetPartySnapshotResponse(partyState.getPartyPhase());
+        for (PartyMember partyMember : members) {
+            ret.getMembers().put(partyMember.getId(),
+                    new PartyMemberSnapshotResponse(
+                            partyMember.getName(),
+                            partyMember.getColor(),
+                            partyMember.isHost(),
+                            partyMember.isReady(),
+                            partyMember.isConnected(),
+                            request.getPartyId()));
+        }
+
         return ret;
     }
 

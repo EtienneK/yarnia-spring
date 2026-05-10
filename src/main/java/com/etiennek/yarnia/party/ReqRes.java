@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import org.hibernate.validator.constraints.Length;
 
+import com.etiennek.yarnia.party.Constants.PartyPhase;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
@@ -94,18 +96,18 @@ public final class ReqRes {
         private final UUID partyId;
     }
 
-    public static enum PartyPhase {
-        WAITING, PLAYING, FINISHED
-    }
-
     @Data
     @RequiredArgsConstructor
     public static class PartyMemberSnapshotResponse {
+        @NonNull
         private final String name;
+        @NonNull
         private final String color;
         private final boolean isHost;
         private final boolean isReady;
         private final boolean connected;
+        @NonNull
+        private final UUID partyId;
     }
 
     @Data
@@ -123,7 +125,9 @@ public final class ReqRes {
     @Data
     @RequiredArgsConstructor
     public static class GetPartySnapshotResponse {
+        @NonNull
         private final PartyPhase partyPhase;
-        private final Map<String, PartyMemberSnapshotResponse> members = new HashMap<>();
+        @NonNull
+        private final Map<UUID, PartyMemberSnapshotResponse> members = new HashMap<>();
     }
 }

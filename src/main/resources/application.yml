@@ -1,8 +1,10 @@
 server:
   port: 3001
 spring:
-    application:
-        name: yarnia
-    threads:
-        virtual:
-            enabled: true
+  application:
+    name: yarnia
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    show-sql: true
