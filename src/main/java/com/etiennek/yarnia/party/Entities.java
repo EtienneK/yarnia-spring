@@ -1,12 +1,9 @@
 package com.etiennek.yarnia.party;
 
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
 import com.etiennek.yarnia.party.Constants.PartyPhase;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -16,7 +13,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Data;

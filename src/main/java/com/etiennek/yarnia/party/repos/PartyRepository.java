@@ -1,4 +1,4 @@
-package com.etiennek.yarnia.party;
+package com.etiennek.yarnia.party.repos;
 
 import java.util.Optional;
 import java.util.UUID;

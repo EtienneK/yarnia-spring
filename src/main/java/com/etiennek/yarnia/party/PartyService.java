@@ -21,6 +21,10 @@ import com.etiennek.yarnia.party.ReqRes.JoinPartyResponse;
 import com.etiennek.yarnia.party.ReqRes.PartyMemberSnapshotResponse;
 import com.etiennek.yarnia.party.ReqRes.VerifyJoinRequest;
 import com.etiennek.yarnia.party.ReqRes.VerifyJoinResponse;
+import com.etiennek.yarnia.party.repos.PartyJoinTokenRepository;
+import com.etiennek.yarnia.party.repos.PartyMemberRepository;
+import com.etiennek.yarnia.party.repos.PartyRepository;
+import com.etiennek.yarnia.party.repos.PartyStateRepository;
 
 import jakarta.validation.Valid;
 
