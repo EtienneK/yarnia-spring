@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.server.ServerHttpRequest;
+import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessagingException;
@@ -23,6 +24,7 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
+import org.springframework.web.util.WebUtils;
 
 import com.etiennek.yarnia.party.PartyService;
 import com.etiennek.yarnia.party.ReqRes.VerifyJoinRequest;
@@ -30,6 +32,7 @@ import com.etiennek.yarnia.party.ReqRes.VerifyJoinRequest;
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+    private static final Logger logger = LoggerFactory.getLogger(WebSocketConfig.class);
 
     private @Autowired PartyService partyService;
 
@@ -61,7 +64,27 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         protected Principal determineUser(ServerHttpRequest request,
                 WebSocketHandler wsHandler,
                 Map<String, Object> attributes) {
-            return new GenericPrincipal("123");
+
+            final var partyId = getCookieValue(request, "partyId");
+            final var playerId = getCookieValue(request, "playerId");
+            final var joinToken = getCookieValue(request, "joinToken");
+
+            try {
+                verifyJoinRequest(partyId, playerId, joinToken, null, null);
+                return new GenericPrincipal(playerId);
+            } catch (MessagingException e) {
+                logger.warn("failed to verify user based on cookies: " + e.getMessage());
+                return null;
+            }
+        }
+
+        private String getCookieValue(ServerHttpRequest request, String name) {
+            if (request instanceof ServletServerHttpRequest servletRequest) {
+                final var cookie = WebUtils.getCookie(servletRequest.getServletRequest(), name);
+                if (cookie == null) return null;
+                return cookie.getValue();
+            }
+            return null;
         }
     }
 
@@ -110,24 +133,24 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             return message;
         }
 
-        private void verifyJoinRequest(String partyId, String playerId, String joinToken, StompCommand command,
-                String destination) {
-            var isAllowed = false;
-            if (partyId != null && playerId != null && joinToken != null) {
-                try {
-                    final var verifyJoinResponse = partyService.verifyJoin(
-                            new VerifyJoinRequest(partyId, playerId, joinToken));
-                    isAllowed = verifyJoinResponse.isAllowed();
-                } catch (IllegalArgumentException e) {
-                    isAllowed = false;
-                }
-            }
+    }
 
-            if (!isAllowed) {
-                logger.warn("user unauthorized for command [" + command + "] at destination [" + destination + "]");
-                throw new MessagingException("forbidden");
+    private void verifyJoinRequest(String partyId, String playerId, String joinToken, StompCommand command,
+                String destination) {
+        var isAllowed = false;
+        if (partyId != null && playerId != null && joinToken != null) {
+            try {
+                final var verifyJoinResponse = partyService.verifyJoin(
+                        new VerifyJoinRequest(partyId, playerId, joinToken));
+                isAllowed = verifyJoinResponse.isAllowed();
+            } catch (IllegalArgumentException e) {
+                isAllowed = false;
             }
         }
 
+        if (!isAllowed) {
+            logger.warn("user unauthorized for command [" + command + "] at destination [" + destination + "]");
+            throw new MessagingException("forbidden");
+        }
     }
 }
