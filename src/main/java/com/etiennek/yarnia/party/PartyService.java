@@ -49,7 +49,7 @@ public class PartyService {
             uniqueJoinCodeFound = !partyRepository.existsByJoinCode(joinCode);
         } while (!uniqueJoinCodeFound && ++uniqueJoinCodeFoundRetries < 5);
 
-        final var party = partyRepository.save(new Party(joinCode, 0));
+        final var party = partyRepository.save(new Party(joinCode, 1));
         final var partyState = new PartyState(party.getId(), PartyPhase.WAITING);
         partyStateRepository.save(partyState);
         partyMemberRepository.save(new PartyMember(
