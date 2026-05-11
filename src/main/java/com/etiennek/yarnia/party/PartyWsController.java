@@ -8,7 +8,9 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.etiennek.yarnia.party.Entities.PartyMember;
 import com.etiennek.yarnia.party.ReqRes.GetPartySnapshotRequest;
 import com.etiennek.yarnia.party.ReqRes.GetPartySnapshotResponse;
 import com.etiennek.yarnia.party.repos.PartyMemberRepository;
@@ -16,6 +18,7 @@ import com.etiennek.yarnia.party.repos.PartyMemberRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;;
 
+@Transactional
 @Controller
 @MessageMapping("/party/{partyId}")
 public class PartyWsController {
@@ -34,13 +37,32 @@ public class PartyWsController {
 
     @MessageMapping("setName")
     @SendTo(ALL)
-    public GetPartySnapshotResponse setName(@DestinationVariable String partyId, String name,
-            StompHeaderAccessor headers) {
-        final var authRes = checkAuth(partyId, headers);
-        final var partyMember = partyMemberRepository.findById(authRes.getPlayerId())
-                .orElseThrow(() -> new IllegalStateException("party member not found"))
-                .withName(name);
+    public GetPartySnapshotResponse setName(
+            @DestinationVariable String partyId,
+            StompHeaderAccessor headers,
+            String name) {
+        if (name == null || name.trim().length() == 0) {
+            name = Utils.generatePlayerName();
+        }
+        name = name.trim();
+
+        if (name.length() > Constants.MAX_NAME_LENGTH) {
+            name = name.substring(0, Constants.MAX_NAME_LENGTH);
+        }
+
+        final var partyMember = partyMember(partyId, headers).withName(name.trim());
         partyMemberRepository.save(partyMember);
+        return partyService.getPartySnapshot(new GetPartySnapshotRequest(partyId));
+    }
+
+    @MessageMapping("setReady")
+    @SendTo(ALL)
+    public GetPartySnapshotResponse setReady(
+            @DestinationVariable String partyId,
+            StompHeaderAccessor headers,
+            boolean ready) {
+        final var partyMember = partyMember(partyId, headers);
+        partyMemberRepository.save(partyMember.withReady(ready));
         return partyService.getPartySnapshot(new GetPartySnapshotRequest(partyId));
     }
 
@@ -54,6 +76,12 @@ public class PartyWsController {
     // // ...
     // return appError;
     // }
+
+    private PartyMember partyMember(String partyId, StompHeaderAccessor headers) {
+        final var authRes = checkAuth(partyId, headers);
+        return partyMemberRepository.findById(authRes.getPlayerId())
+                .orElseThrow(() -> new IllegalStateException("party member not found"));
+    }
 
     @Data
     @RequiredArgsConstructor

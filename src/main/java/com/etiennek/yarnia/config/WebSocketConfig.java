@@ -27,6 +27,8 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
 import org.springframework.web.util.WebUtils;
 
+import com.etiennek.yarnia.party.Constants;
+import com.etiennek.yarnia.party.Utils;
 import com.etiennek.yarnia.party.Entities.PartyMember;
 import com.etiennek.yarnia.party.ReqRes.AddMemberRequest;
 import com.etiennek.yarnia.party.ReqRes.AddMemberResponse;
@@ -120,7 +122,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     attributes.put(partyId + ".joinToken", joinToken);
                     accessor.setSessionAttributes(attributes);
 
-                    final var playerName = accessor.getFirstNativeHeader("playerName");
+                    var playerName = accessor.getFirstNativeHeader("playerName");
+                    if (playerName != null) {
+                        playerName = playerName.substring(0, Math.min(playerName.length(), Constants.MAX_NAME_LENGTH));
+                    }
                     final var addMemberResponse = addMember(new AddMemberRequest(
                             partyId,
                             playerId,
@@ -164,7 +169,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 return new AddMemberResponse(false, "full");
             }
 
-            final var playerName = request.getPlayerName() == null ? generatePlayerName() : request.getPlayerName();
+            final var playerName = request.getPlayerName() == null ? Utils.generatePlayerName() : request.getPlayerName();
             final var isHost = members.stream().filter(m -> m.isHost() && !m.getId().equals(playerId)).count() <= 0;
 
             partyMemberRepository.save(new PartyMember(
@@ -199,10 +204,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             logger.warn("user unauthorized for command [" + command + "] at destination [" + destination + "]");
             throw new MessagingException("forbidden");
         }
-    }
-
-    private String generatePlayerName() {
-        return "Player#" + Integer.toString((int) Math.floor(Math.random() * 10000));
     }
 
     private static final String[] PLAYER_COLOR_PALETTE = {

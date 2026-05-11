@@ -7,6 +7,7 @@ import { RxStomp } from "@stomp/rx-stomp";
 import SockJS from "sockjs-client/dist/sockjs";
 import { map } from "rxjs";
 import Cookies from "universal-cookie";
+import { MAX_NAME_LENGTH } from "../utils/constants.ts";
 
 // import { PartyBot } from "./bot.ts";
 
@@ -48,8 +49,6 @@ export function Game({
       cookies.remove("joinToken");
     };
   }, [partyInfo.joinToken, partyInfo.partyId, partyInfo.playerId]);
-
-  const isFirstUpdate = useRef(true);
   const clientRef = useRef(new RxStomp());
 
   const publish = useCallback(
@@ -70,7 +69,11 @@ export function Game({
 
   useEffect(() => {
     const client = clientRef.current;
-    const preferredName = localStorage.getItem("preferredName");
+    let preferredName: string | null = localStorage.getItem("preferredName");
+    if (preferredName?.trim().length === 0) {
+      localStorage.removeItem("preferredName");
+      preferredName = null;
+    }
 
     client.configure({
       webSocketFactory: () => new SockJS(window.location.origin + "/ws"),
@@ -109,12 +112,9 @@ export function Game({
       .pipe(map((message) => JSON.parse(message.body)))
       .subscribe((message) => {
         setSnapshot(message);
-        if (isFirstUpdate.current) {
-          isFirstUpdate.current = false;
-          const playerName = message.members[partyInfo.playerId].name;
-          setNameInput(playerName);
-          localStorage.setItem("preferredName", playerName);
-        }
+        const playerName = message.members[partyInfo.playerId].name;
+        setNameInput(playerName);
+        localStorage.setItem("preferredName", playerName);
       });
 
     // const snapshotQueueSub = client
@@ -180,15 +180,19 @@ export function Game({
 
   const onNameChange = (value: string) => {
     setNameInput(value);
-    localStorage.setItem("preferredName", value);
-    if (nameTimeoutRef.current) clearTimeout(nameTimeoutRef.current);
-    nameTimeoutRef.current = setTimeout(() => {
-      //partyMatch.connection?.setName({ name: value }).catch(() => {})
-      publish({
-        destination: `/app/party/${partyInfo.partyId}/setName`,
-        body: value,
-      });
-    }, 300);
+    if (value.trim().length > 0) {
+      if (nameTimeoutRef.current) clearTimeout(nameTimeoutRef.current);
+      nameTimeoutRef.current = setTimeout(() => {
+        publish({
+          destination: `/app/party/${partyInfo.partyId}/setName`,
+          body: value,
+        });
+      }, 300);
+    }
+  };
+
+  const onNameBlur = () => {
+    setNameInput(localStorage.getItem("preferredName") as string);
   };
 
   const addBot = () => {
@@ -196,7 +200,10 @@ export function Game({
   };
 
   const toggleReady = () => {
-    //partyMatch.connection?.toggleReady().catch(() => {})
+    publish({
+      destination: `/app/party/${partyInfo.partyId}/setReady`,
+      body: !myMember?.ready,
+    });
   };
 
   const startGame = () => {
@@ -259,7 +266,9 @@ export function Game({
             placeholder="Your name"
             value={nameInput}
             onChange={(e) => onNameChange(e.target.value)}
+            onBlur={() => onNameBlur()}
             className="input w-full mb-5 text-lg"
+            maxLength={MAX_NAME_LENGTH}
           />
 
           <div className="text-left mb-10">

@@ -37,8 +37,6 @@ public final class ReqRes {
         @NotBlank
         @Length(min = 6, max = 6)
         private final String joinCode;
-        @Length(min = 1, max = 12)
-        private final String playerName;
     }
 
     @Data
