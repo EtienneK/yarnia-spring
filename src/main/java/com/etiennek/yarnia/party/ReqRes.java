@@ -18,22 +18,12 @@ import lombok.RequiredArgsConstructor;
 
 public final class ReqRes {
     @Data
-    @NoArgsConstructor(force = true, access = AccessLevel.PRIVATE)
-    @RequiredArgsConstructor
-    public static class CreatePartyRequest {
-        @Length(min = 1, max = 12)
-        private final String playerName;
-    }
-
-    @Data
     @RequiredArgsConstructor
     public static class CreatePartyResponse {
         @NonNull
         private final UUID partyId;
         @NonNull
         private final UUID playerId;
-        @NonNull
-        private final String playerName;
         @NonNull
         private final String joinCode;
         @NonNull
@@ -59,33 +49,7 @@ public final class ReqRes {
         @NonNull
         private final UUID playerId;
         @NonNull
-        private final String playerName;
-        @NonNull
         private final UUID joinToken;
-    }
-
-    @Data
-    @NoArgsConstructor(force = true, access = AccessLevel.PRIVATE)
-    @RequiredArgsConstructor
-    public static class VerifyJoinRequest {
-        @NotNull
-        private final UUID partyId;
-        @NotNull
-        private final UUID playerId;
-        @NotNull
-        private final UUID joinToken;
-
-        public VerifyJoinRequest(String partyId, String playerId, String joinToken) {
-            this.partyId = UUID.fromString(partyId);
-            this.playerId = UUID.fromString(playerId);
-            this.joinToken = UUID.fromString(joinToken);
-        }
-    }
-
-    @Data
-    @RequiredArgsConstructor
-    public static class VerifyJoinResponse {
-        private final boolean allowed;
     }
 
     @Data
@@ -129,5 +93,42 @@ public final class ReqRes {
         private final PartyPhase partyPhase;
         @NonNull
         private final Map<UUID, PartyMemberSnapshotResponse> members = new HashMap<>();
+    }
+
+    @Data
+    @NoArgsConstructor(force = true, access = AccessLevel.PRIVATE)
+    @RequiredArgsConstructor
+    public static class AddMemberRequest {
+        @NotNull
+        private final UUID partyId;
+        @NotNull
+        private final UUID playerId;
+        @NotNull
+        private final String playerName;
+
+        public AddMemberRequest(String partyId, String playerId, String playerName) {
+            this.partyId = UUID.fromString(partyId);
+            this.playerId = UUID.fromString(playerId);
+            this.playerName = playerName;
+        }
+    }
+
+    @Data
+    @RequiredArgsConstructor
+    public static class AddMemberResponse {
+        private final boolean added;
+        private final String errorCode;
+    }
+
+    @Data
+    @NoArgsConstructor(force = true, access = AccessLevel.PRIVATE)
+    @RequiredArgsConstructor
+    public static class RemoveMemberRequest {
+        @NotNull
+        private final UUID playerId;
+
+        public RemoveMemberRequest(String playerId) {
+            this.playerId = UUID.fromString(playerId);
+        }
     }
 }

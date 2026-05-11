@@ -19,8 +19,8 @@ export interface PartySnapshot {
     {
       name: string;
       color: string;
-      isHost: boolean;
-      isReady: boolean;
+      host: boolean;
+      ready: boolean;
       connected: boolean;
     }
   >;
@@ -35,7 +35,7 @@ export function Game({
 }) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<PartySnapshot | null>(null);
-  const [nameInput, setNameInput] = useState(partyInfo.playerName || "Player");
+  const [nameInput, setNameInput] = useState<string>("");
 
   useEffect(() => {
     const cookies = new Cookies(null, { path: '/' });
@@ -49,13 +49,20 @@ export function Game({
     };
   }, [partyInfo.joinToken, partyInfo.partyId, partyInfo.playerId]);
 
+  const isFirstUpdate = useRef(true);
   const clientRef = useRef(new RxStomp());
 
   const publish = useCallback(
     <T,>({ destination, body }: { destination: string; body: T }) => {
+      let toPublish: string;
+      if (typeof body === 'string') {
+        toPublish = body;
+      } else {
+        toPublish = JSON.stringify(body);
+      }
       clientRef.current.publish({
         destination,
-        body: JSON.stringify(body),
+        body: toPublish,
       })
     },
     [],
@@ -63,12 +70,15 @@ export function Game({
 
   useEffect(() => {
     const client = clientRef.current;
+    const preferredName = localStorage.getItem("preferredName");
+
     client.configure({
       webSocketFactory: () => new SockJS(window.location.origin + "/ws"),
       connectHeaders: {
         partyId: partyInfo.partyId,
         playerId: partyInfo.playerId,
         joinToken: partyInfo.joinToken,
+        ...(preferredName ? { playerName: preferredName } : undefined)
       },
       debug: (msg) => {
         console.log("stomp - ", msg);
@@ -82,8 +92,12 @@ export function Game({
     client.activate();
 
     const errorSub = client.stompErrors$.subscribe((error) => {
-      if (error?.headers?.message === "forbidden") {
+      const errorCode = error?.headers?.message;
+      if (errorCode === "forbidden") {
         setConnectionError("Unauthorised.");
+        client.deactivate();
+      } else if (errorCode === "full") {
+        setConnectionError("Party is full.");
         client.deactivate();
       } else {
         console.error(error);
@@ -95,18 +109,30 @@ export function Game({
       .pipe(map((message) => JSON.parse(message.body)))
       .subscribe((message) => {
         setSnapshot(message);
+        if (isFirstUpdate.current) {
+          isFirstUpdate.current = false;
+          const playerName = message.members[partyInfo.playerId].name;
+          setNameInput(playerName);
+          localStorage.setItem("preferredName", playerName);
+        }
       });
 
-    const snapshotQueueSub = client
-      .watch("/user/queue/snapshot")
-      .pipe(map((message) => JSON.parse(message.body)))
-      .subscribe((message) => {
-        setSnapshot(message);
-      });
+    // const snapshotQueueSub = client
+    //   .watch("/user/queue/snapshot")
+    //   .pipe(map((message) => JSON.parse(message.body) as PartySnapshot))
+    //   .subscribe((message) => {
+    //     setSnapshot(message);
+    //     if (isFirstUpdate.current) {
+    //       isFirstUpdate.current = false;
+    //       const playerName = message.members[partyInfo.playerId].name;
+    //       setNameInput(playerName);
+    //       localStorage.setItem("preferredName", playerName);
+    //     }
+    //   });
 
     const connectedSub = client.connected$.subscribe(() => {
       publish({
-        destination: `/app/party/${partyInfo.partyId}/snapshot`,
+        destination: `/app/party/${partyInfo.partyId}/user-snapshot`,
         body: { partyId: partyInfo.partyId },
       });
     });
@@ -115,7 +141,7 @@ export function Game({
       connectedSub.unsubscribe();
       errorSub.unsubscribe();
       snapshotTopicSub.unsubscribe();
-      snapshotQueueSub.unsubscribe();
+      // snapshotQueueSub.unsubscribe();
       client.deactivate();
     };
   }, [partyInfo.joinToken, partyInfo.partyId, partyInfo.playerId, publish]);
@@ -157,7 +183,11 @@ export function Game({
     localStorage.setItem("preferredName", value);
     if (nameTimeoutRef.current) clearTimeout(nameTimeoutRef.current);
     nameTimeoutRef.current = setTimeout(() => {
-      //partyMatch.connection?.setName({ name: value }).catch(() => {})
+    //partyMatch.connection?.setName({ name: value }).catch(() => {})
+    publish({
+      destination: `/app/party/${partyInfo.partyId}/setName`,
+      body: value,
+    });
     }, 300);
   };
 
@@ -178,10 +208,10 @@ export function Game({
   };
 
   const myMember = snapshot?.members[partyInfo.playerId];
-  const isHost = myMember?.isHost ?? false;
+  const isHost = myMember?.host ?? false;
   const memberList = snapshot ? Object.entries(snapshot.members) : [];
 
-  const waitingForReady = () => memberList.findIndex((m) => !m[1].isReady) > -1;
+  const waitingForReady = () => memberList.findIndex((m) => !m[1].ready) > -1;
   const needMorePlayers = () => MIN_PARTY_SIZE - memberList.length > 0;
 
   if (
@@ -241,7 +271,7 @@ export function Game({
             </div>
             {memberList.map(([id, member]) => (
               <div key={id} className="party-member-row">
-                {member.isReady ? (
+                {member.ready ? (
                   <span className="mr-2">✅</span>
                 ) : (
                   <span className="mr-2">❌</span>
@@ -254,7 +284,7 @@ export function Game({
                   {id === partyInfo.playerId ? " (You)" : ""}
                 </span>
                 <span className="party-member-badges">
-                  {member.isHost && (
+                  {member.host && (
                     <span className="badge badge-primary ml-2">Host</span>
                   )}
                   {!member.connected && (
@@ -280,10 +310,10 @@ export function Game({
           )}
 
           <button
-            className={`btn w-full mb-2 ${myMember?.isReady ? "btn-secondary" : "btn-success"}`}
+            className={`btn w-full mb-2 ${myMember?.ready ? "btn-secondary" : "btn-success"}`}
             onClick={toggleReady}
           >
-            {myMember?.isReady ? "Unready" : "Ready"}
+            {myMember?.ready ? "Unready" : "Ready"}
           </button>
 
           {isHost && (

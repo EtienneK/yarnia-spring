@@ -7,7 +7,6 @@ export interface PartyMatchInfo {
   playerId: string;
   joinCode: string;
   joinToken: string;
-  playerName: string;
 }
 
 export function Menu({

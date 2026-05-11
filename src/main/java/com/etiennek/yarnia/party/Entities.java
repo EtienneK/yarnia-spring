@@ -18,6 +18,7 @@ import lombok.AccessLevel;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import lombok.With;
 
 public final class Entities {
     @Entity
@@ -63,6 +64,7 @@ public final class Entities {
     @Data
     @NoArgsConstructor(access = AccessLevel.PRIVATE, force = true)
     @RequiredArgsConstructor
+    @With
     public static class PartyMember {
         @Id
         private final UUID id;
