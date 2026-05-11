@@ -6,7 +6,7 @@ import Hero from "../components/Hero.tsx";
 import { RxStomp } from "@stomp/rx-stomp";
 import SockJS from "sockjs-client/dist/sockjs";
 import { map } from "rxjs";
-import Cookies from 'universal-cookie';
+import Cookies from "universal-cookie";
 
 // import { PartyBot } from "./bot.ts";
 
@@ -38,14 +38,14 @@ export function Game({
   const [nameInput, setNameInput] = useState<string>("");
 
   useEffect(() => {
-    const cookies = new Cookies(null, { path: '/' });
-    cookies.set('partyId', partyInfo.partyId);
-    cookies.set('playerId', partyInfo.playerId);
-    cookies.set('joinToken', partyInfo.joinToken);
+    const cookies = new Cookies(null, { path: "/" });
+    cookies.set("partyId", partyInfo.partyId);
+    cookies.set("playerId", partyInfo.playerId);
+    cookies.set("joinToken", partyInfo.joinToken);
     return () => {
-      cookies.remove('partyId');
-      cookies.remove('playerId');
-      cookies.remove('joinToken');
+      cookies.remove("partyId");
+      cookies.remove("playerId");
+      cookies.remove("joinToken");
     };
   }, [partyInfo.joinToken, partyInfo.partyId, partyInfo.playerId]);
 
@@ -55,7 +55,7 @@ export function Game({
   const publish = useCallback(
     <T,>({ destination, body }: { destination: string; body: T }) => {
       let toPublish: string;
-      if (typeof body === 'string') {
+      if (typeof body === "string") {
         toPublish = body;
       } else {
         toPublish = JSON.stringify(body);
@@ -63,7 +63,7 @@ export function Game({
       clientRef.current.publish({
         destination,
         body: toPublish,
-      })
+      });
     },
     [],
   );
@@ -78,7 +78,7 @@ export function Game({
         partyId: partyInfo.partyId,
         playerId: partyInfo.playerId,
         joinToken: partyInfo.joinToken,
-        ...(preferredName ? { playerName: preferredName } : undefined)
+        ...(preferredName ? { playerName: preferredName } : undefined),
       },
       debug: (msg) => {
         console.log("stomp - ", msg);
@@ -183,11 +183,11 @@ export function Game({
     localStorage.setItem("preferredName", value);
     if (nameTimeoutRef.current) clearTimeout(nameTimeoutRef.current);
     nameTimeoutRef.current = setTimeout(() => {
-    //partyMatch.connection?.setName({ name: value }).catch(() => {})
-    publish({
-      destination: `/app/party/${partyInfo.partyId}/setName`,
-      body: value,
-    });
+      //partyMatch.connection?.setName({ name: value }).catch(() => {})
+      publish({
+        destination: `/app/party/${partyInfo.partyId}/setName`,
+        body: value,
+      });
     }, 300);
   };
 
@@ -214,10 +214,7 @@ export function Game({
   const waitingForReady = () => memberList.findIndex((m) => !m[1].ready) > -1;
   const needMorePlayers = () => MIN_PARTY_SIZE - memberList.length > 0;
 
-  if (
-    /*partyMatch.connStatus !== 'connected' ||*/ !snapshot ||
-    connectionError
-  ) {
+  if (!snapshot || connectionError) {
     return (
       <Hero>
         <p className="mb-5">
