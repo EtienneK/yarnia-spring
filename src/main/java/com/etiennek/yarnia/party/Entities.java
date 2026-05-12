@@ -98,6 +98,7 @@ public final class Entities {
     @Data
     @NoArgsConstructor(access = AccessLevel.PRIVATE, force = true)
     @RequiredArgsConstructor
+    @With
     public static class PartyState {
         @Id
         private final UUID id;

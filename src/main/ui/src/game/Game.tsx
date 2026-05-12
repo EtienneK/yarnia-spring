@@ -11,10 +11,10 @@ import { MAX_NAME_LENGTH } from "../utils/constants.ts";
 
 // import { PartyBot } from "./bot.ts";
 
-export type GamePhase = "waiting" | "playing" | "finished";
+export type GamePhase = "WAITING" | "PLAYING" | "FINISHED";
 
 export interface PartySnapshot {
-  phase: GamePhase;
+  partyPhase: GamePhase;
   members: Record<
     string,
     {
@@ -204,11 +204,11 @@ export function Game({
   };
 
   const startGame = () => {
-    //partyMatch.connection?.startGame().catch(() => {})
+    publish({ destination: `/app/party/${partyInfo.partyId}/startGame`, body: true, });
   };
 
   const finishGame = () => {
-    //partyMatch.connection?.finishGame().catch(() => {})
+    publish({ destination: `/app/party/${partyInfo.partyId}/finishGame`, body: true, });
   };
 
   const myMember = snapshot?.members[partyInfo.playerId];
@@ -341,7 +341,7 @@ export function Game({
             Leave
           </button>
 
-          {snapshot?.phase === "playing" && (
+          {snapshot?.partyPhase === "PLAYING" && (
             <div style={{ marginTop: 16, textAlign: "center" }}>
               <p
                 style={{
@@ -364,7 +364,7 @@ export function Game({
             </div>
           )}
 
-          {snapshot?.phase === "finished" && (
+          {snapshot?.partyPhase === "FINISHED" && (
             <div
               className="match-found-text"
               style={{ textAlign: "center", marginTop: 16 }}

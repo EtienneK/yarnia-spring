@@ -1,5 +1,6 @@
 package com.etiennek.yarnia.party;
 
+import com.etiennek.yarnia.party.repos.PartyStateRepository;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.etiennek.yarnia.party.Constants.PartyPhase;
 import com.etiennek.yarnia.party.Entities.PartyMember;
 import com.etiennek.yarnia.party.ReqRes.AddBotRequest;
 import com.etiennek.yarnia.party.ReqRes.GetPartySnapshotRequest;
@@ -23,10 +25,16 @@ import lombok.RequiredArgsConstructor;;
 @Controller
 @MessageMapping("/party/{partyId}")
 public class PartyWsController {
+    private final PartyStateRepository partyStateRepository;
+
     private static final String ALL = "/topic/party/{partyId}/snapshot";
 
     private @Autowired PartyService partyService;
     private @Autowired PartyMemberRepository partyMemberRepository;
+
+    PartyWsController(PartyStateRepository partyStateRepository) {
+        this.partyStateRepository = partyStateRepository;
+    }
 
     @MessageMapping("user-snapshot")
     // @SendToUser(destinations = "/queue/snapshot", broadcast = false)
@@ -64,6 +72,56 @@ public class PartyWsController {
             boolean ready) {
         final var partyMember = partyMember(partyId, headers);
         partyMemberRepository.save(partyMember.withReady(ready));
+        return snapshot(partyId);
+    }
+
+    @MessageMapping("startGame")
+    @SendTo(ALL)
+    public GetPartySnapshotResponse startGame(
+            @DestinationVariable String partyId,
+            StompHeaderAccessor headers,
+            boolean _body) {
+        final var authRes = checkAuth(partyId, headers);
+        if (!partyMemberRepository.existsByIdAndIsHost(authRes.getPlayerId(), true)) {
+            return null;
+        }
+        UUID partyIdUuid;
+        try {
+            partyIdUuid = UUID.fromString(partyId);
+        } catch (Exception e) {
+            return null;
+        }
+
+        final var partyState = partyStateRepository.findById(partyIdUuid)
+            .orElseThrow(() -> new IllegalStateException("party state not found"));
+
+        partyStateRepository.save(partyState.withPartyPhase(PartyPhase.PLAYING));
+
+        return snapshot(partyId);
+    }
+
+    @MessageMapping("finishGame")
+    @SendTo(ALL)
+    public GetPartySnapshotResponse finishGame(
+            @DestinationVariable String partyId,
+            StompHeaderAccessor headers,
+            boolean _body) {
+        final var authRes = checkAuth(partyId, headers);
+        if (!partyMemberRepository.existsByIdAndIsHost(authRes.getPlayerId(), true)) {
+            return null;
+        }
+        UUID partyIdUuid;
+        try {
+            partyIdUuid = UUID.fromString(partyId);
+        } catch (Exception e) {
+            return null;
+        }
+
+        final var partyState = partyStateRepository.findById(partyIdUuid)
+            .orElseThrow(() -> new IllegalStateException("party state not found"));
+
+        partyStateRepository.save(partyState.withPartyPhase(PartyPhase.FINISHED));
+
         return snapshot(partyId);
     }
 
