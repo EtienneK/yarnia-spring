@@ -11,6 +11,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.etiennek.yarnia.party.Entities.PartyMember;
+import com.etiennek.yarnia.party.ReqRes.AddBotRequest;
 import com.etiennek.yarnia.party.ReqRes.GetPartySnapshotRequest;
 import com.etiennek.yarnia.party.ReqRes.GetPartySnapshotResponse;
 import com.etiennek.yarnia.party.repos.PartyMemberRepository;
@@ -52,7 +53,7 @@ public class PartyWsController {
 
         final var partyMember = partyMember(partyId, headers).withName(name.trim());
         partyMemberRepository.save(partyMember);
-        return partyService.getPartySnapshot(new GetPartySnapshotRequest(partyId));
+        return snapshot(partyId);
     }
 
     @MessageMapping("setReady")
@@ -63,7 +64,21 @@ public class PartyWsController {
             boolean ready) {
         final var partyMember = partyMember(partyId, headers);
         partyMemberRepository.save(partyMember.withReady(ready));
-        return partyService.getPartySnapshot(new GetPartySnapshotRequest(partyId));
+        return snapshot(partyId);
+    }
+
+    @MessageMapping("addBot")
+    @SendTo(ALL)
+    public GetPartySnapshotResponse addBot(
+            @DestinationVariable String partyId,
+            StompHeaderAccessor headers,
+            boolean body) {
+        final var authRes = checkAuth(partyId, headers);
+        if (!partyMemberRepository.existsByIdAndIsHost(authRes.getPlayerId(), true)) {
+            return null;
+        }
+        partyService.addBot(new AddBotRequest(partyId));
+        return snapshot(partyId);
     }
 
     //
@@ -76,6 +91,10 @@ public class PartyWsController {
     // // ...
     // return appError;
     // }
+
+    private GetPartySnapshotResponse snapshot(String partyId) {
+        return partyService.getPartySnapshot(new GetPartySnapshotRequest(partyId));
+    }
 
     private PartyMember partyMember(String partyId, StompHeaderAccessor headers) {
         final var authRes = checkAuth(partyId, headers);

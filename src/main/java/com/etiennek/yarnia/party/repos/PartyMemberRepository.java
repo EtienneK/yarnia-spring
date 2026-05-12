@@ -13,5 +13,8 @@ import jakarta.persistence.LockModeType;
 public interface PartyMemberRepository extends JpaRepository<PartyMember, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<PartyMember> findById(UUID id);
+
+    boolean existsByIdAndIsHost(UUID id, boolean isHost);
+
     public Set<PartyMember> findByPartyStateId(UUID partyId);
 }

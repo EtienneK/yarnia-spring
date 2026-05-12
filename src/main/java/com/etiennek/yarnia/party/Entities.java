@@ -84,6 +84,12 @@ public final class Entities {
         @Column(nullable = false)
         private final boolean connected;
 
+        @Column(nullable = false)
+        private final boolean isBot;
+
+        @Column
+        private final String botPersona;
+
         @ManyToOne(optional = false)
         private final PartyState partyState;
     }

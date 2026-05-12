@@ -1,5 +1,6 @@
 package com.etiennek.yarnia.party;
 
+import java.util.Random;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,8 @@ import com.etiennek.yarnia.party.Entities.Party;
 import com.etiennek.yarnia.party.Entities.PartyState;
 import com.etiennek.yarnia.party.Entities.PartyMember;
 import com.etiennek.yarnia.party.Entities.PartyJoinToken;
+import com.etiennek.yarnia.party.ReqRes.AddBotRequest;
+import com.etiennek.yarnia.party.ReqRes.AddMemberRequest;
 import com.etiennek.yarnia.party.ReqRes.ClosePartyRequest;
 import com.etiennek.yarnia.party.ReqRes.CreatePartyResponse;
 import com.etiennek.yarnia.party.ReqRes.GetPartySnapshotRequest;
@@ -35,6 +38,7 @@ public class PartyService {
     private @Autowired PartyStateRepository partyStateRepository;
     private @Autowired PartyMemberRepository partyMemberRepository;
     private @Autowired PartyJoinTokenRepository partyJoinTokenRepository;
+    private @Autowired AddMemberService addMemberService;
 
     public CreatePartyResponse createParty() {
         final var playerId = UUID.randomUUID();
@@ -71,7 +75,14 @@ public class PartyService {
                 partyJoinToken.getId());
     }
 
-
+    public void addBot(AddBotRequest request) {
+        final var partyId = request.getPartyId();
+        final var playerId = UUID.randomUUID();
+        final var playerName = "Bot-" + (new Random().nextInt(9999999 - 1111111) + 1111111);
+        final var addMemberReq = new AddMemberRequest(partyId, playerId, playerName, true);
+        addMemberReq.setBotPersona("You are a witty British man."); // TODO
+        addMemberService.addMember(addMemberReq);
+    }
 
     public void removeMember(RemoveMemberRequest request) {
         // TODO: Host propagation

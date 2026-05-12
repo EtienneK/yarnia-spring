@@ -196,14 +196,11 @@ export function Game({
   };
 
   const addBot = () => {
-    //partyMatch.connection?.addBot().catch(() => {})
+    publish({ destination: `/app/party/${partyInfo.partyId}/addBot`, body: true, });
   };
 
   const toggleReady = () => {
-    publish({
-      destination: `/app/party/${partyInfo.partyId}/setReady`,
-      body: !myMember?.ready,
-    });
+    publish({ destination: `/app/party/${partyInfo.partyId}/setReady`, body: !myMember?.ready, });
   };
 
   const startGame = () => {

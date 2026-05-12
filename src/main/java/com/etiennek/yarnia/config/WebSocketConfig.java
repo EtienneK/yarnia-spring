@@ -27,22 +27,17 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
 import org.springframework.web.util.WebUtils;
 
+import com.etiennek.yarnia.party.AddMemberService;
 import com.etiennek.yarnia.party.Constants;
-import com.etiennek.yarnia.party.Utils;
-import com.etiennek.yarnia.party.Entities.PartyMember;
 import com.etiennek.yarnia.party.ReqRes.AddMemberRequest;
-import com.etiennek.yarnia.party.ReqRes.AddMemberResponse;
 import com.etiennek.yarnia.party.repos.PartyJoinTokenRepository;
-import com.etiennek.yarnia.party.repos.PartyMemberRepository;
-import com.etiennek.yarnia.party.repos.PartyStateRepository;
 
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private static final Logger logger = LoggerFactory.getLogger(WebSocketConfig.class);
 
-    private @Autowired PartyStateRepository partyStateRepository;
-    private @Autowired PartyMemberRepository partyMemberRepository;
+    private @Autowired AddMemberService addMemberService;
     private @Autowired PartyJoinTokenRepository partyJoinTokenRepository;
 
     @Override
@@ -126,10 +121,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     if (playerName != null) {
                         playerName = playerName.substring(0, Math.min(playerName.length(), Constants.MAX_NAME_LENGTH));
                     }
-                    final var addMemberResponse = addMember(new AddMemberRequest(
+                    final var addMemberResponse = addMemberService.addMember(new AddMemberRequest(
                             partyId,
                             playerId,
-                            playerName));
+                            playerName,
+                            false));
                     if (!addMemberResponse.isAdded()) {
                         throw new MessagingException(addMemberResponse.getErrorCode());
                     }
@@ -154,36 +150,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
             return message;
         }
-
-        public AddMemberResponse addMember(AddMemberRequest request) {
-            final var partyId = request.getPartyId();
-            final var playerId = request.getPlayerId();
-            // Pessimistic lock
-            final var partyState = partyStateRepository
-                    .findById(partyId)
-                    .orElseThrow(() -> new IllegalStateException("party state does not exist"));
-
-            final var members = partyMemberRepository.findByPartyStateId(partyId);
-
-            if (members.size() >= 8) {
-                return new AddMemberResponse(false, "full");
-            }
-
-            final var playerName = request.getPlayerName() == null ? Utils.generatePlayerName() : request.getPlayerName();
-            final var isHost = members.stream().filter(m -> m.isHost() && !m.getId().equals(playerId)).count() <= 0;
-
-            partyMemberRepository.save(new PartyMember(
-                    playerId,
-                    playerName,
-                    getPlayerColor(playerId),
-                    isHost,
-                    false,
-                    true,
-                    partyState));
-
-            return new AddMemberResponse(true, null);
-        }
-
     }
 
     private void verifyJoinRequest(String partyId, String playerId, String joinToken, StompCommand command,
@@ -192,9 +158,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         if (partyId != null && playerId != null && joinToken != null) {
             try {
                 isAllowed = partyJoinTokenRepository.existsByIdAndPartyIdAndPlayerId(
-                UUID.fromString(joinToken),
-                UUID.fromString(partyId),
-                UUID.fromString(playerId));
+                        UUID.fromString(joinToken),
+                        UUID.fromString(partyId),
+                        UUID.fromString(playerId));
             } catch (IllegalArgumentException e) {
                 isAllowed = false;
             }
@@ -204,26 +170,5 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             logger.warn("user unauthorized for command [" + command + "] at destination [" + destination + "]");
             throw new MessagingException("forbidden");
         }
-    }
-
-    private static final String[] PLAYER_COLOR_PALETTE = {
-            "#ff6b6b",
-            "#4ecdc4",
-            "#45b7d1",
-            "#f7b801",
-            "#5c7cfa",
-            "#20c997",
-            "#f06595",
-            "#ffa94d",
-            "#74c0fc",
-            "#94d82d",
-            "#e599f7",
-            "#ffd43b",
-    };
-
-    private String getPlayerColor(UUID playerId) {
-        final var index = ((playerId.hashCode() % PLAYER_COLOR_PALETTE.length) + PLAYER_COLOR_PALETTE.length)
-                % PLAYER_COLOR_PALETTE.length;
-        return PLAYER_COLOR_PALETTE[index];
     }
 }

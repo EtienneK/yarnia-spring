@@ -103,11 +103,14 @@ public final class ReqRes {
         private final UUID playerId;
         @NotNull
         private final String playerName;
+        private final boolean isBot;
+        private String botPersona;
 
-        public AddMemberRequest(String partyId, String playerId, String playerName) {
+        public AddMemberRequest(String partyId, String playerId, String playerName, boolean isBot) {
             this.partyId = UUID.fromString(partyId);
             this.playerId = UUID.fromString(playerId);
             this.playerName = playerName;
+            this.isBot = isBot;
         }
     }
 
@@ -116,6 +119,18 @@ public final class ReqRes {
     public static class AddMemberResponse {
         private final boolean added;
         private final String errorCode;
+    }
+
+    @Data
+    @NoArgsConstructor(force = true, access = AccessLevel.PRIVATE)
+    @RequiredArgsConstructor
+    public static class AddBotRequest {
+        @NotNull
+        private final UUID partyId;
+
+        public AddBotRequest(String partyId) {
+            this.partyId = UUID.fromString(partyId);
+        }
     }
 
     @Data
