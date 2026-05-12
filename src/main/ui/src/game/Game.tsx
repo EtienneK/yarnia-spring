@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PartyMatchInfo } from "./Menu.tsx";
-import { MIN_PARTY_SIZE } from "./rules.ts";
+import {
+  MAX_BOTS_IN_PARTY,
+  MAX_NAME_LENGTH,
+  MAX_PARTY_SIZE,
+  MIN_PARTY_SIZE,
+} from "./rules.ts";
 import Hero from "../components/Hero.tsx";
 //import { useWebSocketService } from "../utils/hooks.ts";
 import { RxStomp } from "@stomp/rx-stomp";
 import SockJS from "sockjs-client/dist/sockjs";
 import { map } from "rxjs";
 import Cookies from "universal-cookie";
-import { MAX_NAME_LENGTH } from "../utils/constants.ts";
 
 // import { PartyBot } from "./bot.ts";
 
@@ -23,6 +27,7 @@ export interface PartySnapshot {
       host: boolean;
       ready: boolean;
       connected: boolean;
+      bot: boolean;
     }
   >;
 }
@@ -196,19 +201,24 @@ export function Game({
   };
 
   const addBot = () => {
-    publish({ destination: `/app/party/${partyInfo.partyId}/addBot`, body: true, });
+    publish({
+      destination: `/app/party/${partyInfo.partyId}/addBot`,
+      body: true,
+    });
   };
 
   const toggleReady = () => {
-    publish({ destination: `/app/party/${partyInfo.partyId}/setReady`, body: !myMember?.ready, });
+    publish({
+      destination: `/app/party/${partyInfo.partyId}/setReady`,
+      body: !myMember?.ready,
+    });
   };
 
   const startGame = () => {
-    publish({ destination: `/app/party/${partyInfo.partyId}/startGame`, body: true, });
-  };
-
-  const finishGame = () => {
-    publish({ destination: `/app/party/${partyInfo.partyId}/finishGame`, body: true, });
+    publish({
+      destination: `/app/party/${partyInfo.partyId}/startGame`,
+      body: true,
+    });
   };
 
   const myMember = snapshot?.members[partyInfo.playerId];
@@ -290,6 +300,9 @@ export function Game({
                   {member.host && (
                     <span className="badge badge-primary ml-2">Host</span>
                   )}
+                  {member.bot && (
+                    <span className="badge badge-secondary ml-2">Bot</span>
+                  )}
                   {!member.connected && (
                     <span className="badge badge-error ml-2">Disconnected</span>
                   )}
@@ -312,14 +325,16 @@ export function Game({
             </p>
           )}
 
-          <button
-            className={`btn w-full mb-2 ${myMember?.ready ? "btn-secondary" : "btn-success"}`}
-            onClick={toggleReady}
-          >
-            {myMember?.ready ? "Unready" : "Ready"}
-          </button>
+          {snapshot.partyPhase === "WAITING" && (
+            <button
+              className={`btn w-full mb-2 ${myMember?.ready ? "btn-secondary" : "btn-success"}`}
+              onClick={toggleReady}
+            >
+              {myMember?.ready ? "Unready" : "Ready"}
+            </button>
+          )}
 
-          {isHost && (
+          {isHost && snapshot.partyPhase !== "PLAYING" && (
             <button
               className="btn btn-primary w-full mb-2"
               onClick={startGame}
@@ -329,9 +344,14 @@ export function Game({
             </button>
           )}
 
-          <button className="btn btn-secondary" onClick={addBot}>
-            Add Bot
-          </button>
+          {isHost &&
+            Object.values(snapshot.members).filter((m) => m.bot).length <
+              MAX_BOTS_IN_PARTY &&
+            Object.keys(snapshot.members).length <= MAX_PARTY_SIZE && (
+              <button className="btn btn-secondary" onClick={addBot}>
+                Add Bot
+              </button>
+            )}
           <button
             className="btn btn-secondary"
             onClick={() => {
@@ -352,15 +372,6 @@ export function Game({
               >
                 Game is in progress
               </p>
-              {isHost ? (
-                <button className="btn btn-primary" onClick={finishGame}>
-                  Finish Game
-                </button>
-              ) : (
-                <p style={{ color: "#6e6e73", fontSize: 12 }}>
-                  The host can finish the game when ready.
-                </p>
-              )}
             </div>
           )}
 

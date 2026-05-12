@@ -5,7 +5,9 @@ public final class Constants {
         WAITING, PLAYING, FINISHED
     }
 
+    public static final int MIN_PARTY_SIZE = 3;
     public static final int MAX_PARTY_SIZE = 8;
+
     public static final int MAX_BOTS_IN_PARTY = 2;
 
     public static final int MAX_NAME_LENGTH = 12;

@@ -17,4 +17,6 @@ public interface PartyMemberRepository extends JpaRepository<PartyMember, UUID> 
     boolean existsByIdAndIsHost(UUID id, boolean isHost);
 
     public Set<PartyMember> findByPartyStateId(UUID partyId);
+
+    void deleteByPartyStateId(UUID partyId);
 }

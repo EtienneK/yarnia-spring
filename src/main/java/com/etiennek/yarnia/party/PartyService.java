@@ -1,12 +1,16 @@
 package com.etiennek.yarnia.party;
 
-import java.util.Random;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationListener;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import com.etiennek.yarnia.party.Constants.PartyPhase;
 import com.etiennek.yarnia.party.Entities.Party;
@@ -15,7 +19,6 @@ import com.etiennek.yarnia.party.Entities.PartyMember;
 import com.etiennek.yarnia.party.Entities.PartyJoinToken;
 import com.etiennek.yarnia.party.ReqRes.AddBotRequest;
 import com.etiennek.yarnia.party.ReqRes.AddMemberRequest;
-import com.etiennek.yarnia.party.ReqRes.ClosePartyRequest;
 import com.etiennek.yarnia.party.ReqRes.CreatePartyResponse;
 import com.etiennek.yarnia.party.ReqRes.GetPartySnapshotRequest;
 import com.etiennek.yarnia.party.ReqRes.GetPartySnapshotResponse;
@@ -34,6 +37,8 @@ import jakarta.validation.Valid;
 @Validated
 @Transactional
 public class PartyService {
+    private @Autowired SimpMessagingTemplate template;
+
     private @Autowired PartyRepository partyRepository;
     private @Autowired PartyStateRepository partyStateRepository;
     private @Autowired PartyMemberRepository partyMemberRepository;
@@ -78,20 +83,51 @@ public class PartyService {
     public void addBot(AddBotRequest request) {
         final var partyId = request.getPartyId();
         final var playerId = UUID.randomUUID();
-        final var playerName = "Bot-" + (new Random().nextInt(9999999 - 1111111) + 1111111);
+        final var playerName = Utils.generateBotName();
         final var addMemberReq = new AddMemberRequest(partyId, playerId, playerName, true);
         addMemberReq.setBotPersona("You are a witty British man."); // TODO
         addMemberService.addMember(addMemberReq);
     }
 
     public void removeMember(RemoveMemberRequest request) {
-        // TODO: Host propagation
-        this.partyMemberRepository.deleteById(request.getPlayerId());
-    }
+        final var partyId = request.getPartyId();
+        final var playerId = request.getPlayerId();
+        // Pessimistic lock
+        final var partyState = partyStateRepository
+                .findById(partyId)
+                .orElseThrow(() -> new IllegalStateException("party state does not exist"));
 
-    public void closeParty(@Valid ClosePartyRequest request) {
-        partyRepository.deleteById(request.getPartyId());
-        partyJoinTokenRepository.deleteByPartyId(request.getPartyId());
+        final var members = partyMemberRepository.findByPartyStateId(partyId);
+        final var me = members.stream().filter(m -> m.getId().equals(playerId)).findFirst().orElseThrow();
+        final var membersNotMeNotBots = members.stream().filter(m -> !m.isBot() && !m.getId().equals(playerId)).collect(Collectors.toList());
+        final var notMeAndBotCount = membersNotMeNotBots.size();
+
+        if (partyState.getPartyPhase().equals(PartyPhase.PLAYING)) {
+            partyMemberRepository.save(me.withConnected(false).withHost(false));
+        } else {
+            if (notMeAndBotCount == 0) {
+                partyMemberRepository.deleteByPartyStateId(partyId);
+                partyStateRepository.deleteById(partyId);
+                partyJoinTokenRepository.deleteByPartyId(partyId);
+                partyRepository.deleteById(partyId);
+                return;
+            } else {
+                partyMemberRepository.delete(me);
+                partyJoinTokenRepository.deleteByPartyId(partyId);
+            }
+        }
+
+        if (me.isHost() && notMeAndBotCount > 0) {
+            // find a new host
+            for (var i = 0; i < notMeAndBotCount; i++) {
+                final var member = membersNotMeNotBots.get(i);
+                if (i == 0) partyMemberRepository.save(member.withHost(true));
+                else partyMemberRepository.save(member.withHost(false));
+            }
+        }
+
+        template.convertAndSend("/topic/party/" + partyId + "/snapshot",
+                getPartySnapshot(new GetPartySnapshotRequest(partyId)));
     }
 
     public GetPartySnapshotResponse getPartySnapshot(@Valid GetPartySnapshotRequest request) {
@@ -110,6 +146,7 @@ public class PartyService {
                             partyMember.isHost(),
                             partyMember.isReady(),
                             partyMember.isConnected(),
+                            partyMember.isBot(),
                             request.getPartyId()));
         }
 
@@ -125,6 +162,18 @@ public class PartyService {
             code += CODE_CHARS.charAt((int) Math.floor(Math.random() * CODE_CHARS.length()));
         }
         return code;
+    }
+
+    @Component
+    public class CustomSpringEventListener implements ApplicationListener<SessionDisconnectEvent> {
+        @Override
+        public void onApplicationEvent(SessionDisconnectEvent event) {
+            if (event.getUser() == null || event.getUser().getName() == null) {
+                return;
+            }
+            final var partyAndPlayer = event.getUser().getName().split("\\|");
+            removeMember(new RemoveMemberRequest(partyAndPlayer[0], partyAndPlayer[1]));
+        }
     }
 
 }

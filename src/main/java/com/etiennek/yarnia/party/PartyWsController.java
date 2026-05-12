@@ -95,32 +95,18 @@ public class PartyWsController {
         final var partyState = partyStateRepository.findById(partyIdUuid)
             .orElseThrow(() -> new IllegalStateException("party state not found"));
 
+        if (!partyState.getPartyPhase().equals(PartyPhase.WAITING)) {
+            return null;
+        }
+
+        final var partyMembers = partyMemberRepository.findByPartyStateId(partyIdUuid);
+
+        if (partyMembers.size() < Constants.MIN_PARTY_SIZE
+            || partyMembers.stream().filter(m -> !m.isReady()).findAny().isPresent()) {
+            return null;
+        }
+
         partyStateRepository.save(partyState.withPartyPhase(PartyPhase.PLAYING));
-
-        return snapshot(partyId);
-    }
-
-    @MessageMapping("finishGame")
-    @SendTo(ALL)
-    public GetPartySnapshotResponse finishGame(
-            @DestinationVariable String partyId,
-            StompHeaderAccessor headers,
-            boolean _body) {
-        final var authRes = checkAuth(partyId, headers);
-        if (!partyMemberRepository.existsByIdAndIsHost(authRes.getPlayerId(), true)) {
-            return null;
-        }
-        UUID partyIdUuid;
-        try {
-            partyIdUuid = UUID.fromString(partyId);
-        } catch (Exception e) {
-            return null;
-        }
-
-        final var partyState = partyStateRepository.findById(partyIdUuid)
-            .orElseThrow(() -> new IllegalStateException("party state not found"));
-
-        partyStateRepository.save(partyState.withPartyPhase(PartyPhase.FINISHED));
 
         return snapshot(partyId);
     }

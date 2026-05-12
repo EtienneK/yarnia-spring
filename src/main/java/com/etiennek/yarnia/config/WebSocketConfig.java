@@ -75,7 +75,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
             try {
                 verifyJoinRequest(partyId, playerId, joinToken, null, null);
-                return new GenericPrincipal(playerId);
+                return new GenericPrincipal(partyId + "|" + playerId);
             } catch (MessagingException e) {
                 logger.warn("failed to verify user based on cookies: " + e.getMessage());
                 return null;

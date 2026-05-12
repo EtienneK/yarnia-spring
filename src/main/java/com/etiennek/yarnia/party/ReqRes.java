@@ -51,14 +51,6 @@ public final class ReqRes {
     }
 
     @Data
-    @NoArgsConstructor(force = true, access = AccessLevel.PRIVATE)
-    @RequiredArgsConstructor
-    public static class ClosePartyRequest {
-        @NotNull
-        private final UUID partyId;
-    }
-
-    @Data
     @RequiredArgsConstructor
     public static class PartyMemberSnapshotResponse {
         @NonNull
@@ -68,6 +60,7 @@ public final class ReqRes {
         private final boolean isHost;
         private final boolean isReady;
         private final boolean connected;
+        private final boolean isBot;
         @NonNull
         private final UUID partyId;
     }
@@ -138,9 +131,12 @@ public final class ReqRes {
     @RequiredArgsConstructor
     public static class RemoveMemberRequest {
         @NotNull
+        private final UUID partyId;
+        @NotNull
         private final UUID playerId;
 
-        public RemoveMemberRequest(String playerId) {
+        public RemoveMemberRequest(String partyId, String playerId) {
+            this.partyId = UUID.fromString(partyId);
             this.playerId = UUID.fromString(playerId);
         }
     }
