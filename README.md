@@ -63,6 +63,12 @@ The LLM provider is pluggable via Spring AI - to use a different provider, swap
   (phase timers are re-armed on startup and clients reconnect automatically). Delete the
   volume (`docker compose down -v`) for a clean slate. Locally the database is `./data/yarnia.db`
   (gitignored); the path is overridable via `YARNIA_DB_PATH`.
+- **Bind mounts**: if you replace the named volume with a host path (e.g.
+  `./my-data:/data`), the app will fail with `SQLITE_CANTOPEN` unless the directory is
+  writable by the container user (uid **1001**): `sudo chown -R 1001:1001 ./my-data`.
+  Alternatively set `user: "<your-uid>:<your-gid>"` on the service and create the
+  directory yourself. Named volumes don't need this — Docker initializes them from the
+  image with the right ownership.
 - Behind a reverse proxy with HTTPS, set `SERVER_FORWARD_HEADERS_STRATEGY=framework` and add
   your public origin to `YARNIA_ALLOWEDORIGINS`.
 
