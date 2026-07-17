@@ -4,6 +4,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
@@ -38,6 +39,7 @@ import jakarta.validation.Valid;
 @Transactional
 public class PartyService {
     private @Autowired SimpMessagingTemplate template;
+    private @Autowired ApplicationEventPublisher eventPublisher;
 
     private @Autowired PartyRepository partyRepository;
     private @Autowired PartyStateRepository partyStateRepository;
@@ -85,7 +87,7 @@ public class PartyService {
         final var playerId = UUID.randomUUID();
         final var playerName = Utils.generateBotName();
         final var addMemberReq = new AddMemberRequest(partyId, playerId, playerName, true);
-        addMemberReq.setBotPersona("You are a witty British man."); // TODO
+        addMemberReq.setBotPersona(Utils.generateBotPersona());
         addMemberService.addMember(addMemberReq);
     }
 
@@ -99,35 +101,44 @@ public class PartyService {
 
         final var members = partyMemberRepository.findByPartyStateId(partyId);
         final var me = members.stream().filter(m -> m.getId().equals(playerId)).findFirst().orElseThrow();
-        final var membersNotMeNotBots = members.stream().filter(m -> !m.isBot() && !m.getId().equals(playerId)).collect(Collectors.toList());
-        final var notMeAndBotCount = membersNotMeNotBots.size();
 
-        if (partyState.getPartyPhase().equals(PartyPhase.PLAYING)) {
+        final var playing = partyState.getPartyPhase().equals(PartyPhase.PLAYING);
+
+        if (playing) {
+            // Keep the member around so they can reconnect and keep their score/submissions.
             partyMemberRepository.save(me.withConnected(false).withHost(false));
+            eventPublisher.publishEvent(new PartyEvents.MemberDisconnectedEvent(partyId));
         } else {
-            if (notMeAndBotCount == 0) {
-                partyMemberRepository.deleteByPartyStateId(partyId);
-                partyStateRepository.deleteById(partyId);
-                partyJoinTokenRepository.deleteByPartyId(partyId);
-                partyRepository.deleteById(partyId);
-                return;
-            } else {
-                partyMemberRepository.delete(me);
-                partyJoinTokenRepository.deleteByPartyId(partyId);
-            }
+            partyMemberRepository.delete(me);
+            partyJoinTokenRepository.deleteByPartyIdAndPlayerId(partyId, playerId);
         }
 
-        if (me.isHost() && notMeAndBotCount > 0) {
-            // find a new host
-            for (var i = 0; i < notMeAndBotCount; i++) {
-                final var member = membersNotMeNotBots.get(i);
-                if (i == 0) partyMemberRepository.save(member.withHost(true));
-                else partyMemberRepository.save(member.withHost(false));
-            }
+        // Humans still present (during a game, disconnected humans don't count).
+        final var remainingHumans = members.stream()
+                .filter(m -> !m.isBot() && !m.getId().equals(playerId))
+                .filter(m -> !playing || m.isConnected())
+                .collect(Collectors.toList());
+
+        if (remainingHumans.isEmpty()) {
+            deleteParty(partyId);
+            return;
+        }
+
+        if (me.isHost()) {
+            partyMemberRepository.save(remainingHumans.get(0).withHost(true));
         }
 
         template.convertAndSend("/topic/party/" + partyId + "/snapshot",
                 getPartySnapshot(new GetPartySnapshotRequest(partyId)));
+    }
+
+    private void deleteParty(UUID partyId) {
+        // Let other modules (the game engine) clean up their state first.
+        eventPublisher.publishEvent(new PartyEvents.PartyDeletedEvent(partyId));
+        partyMemberRepository.deleteByPartyStateId(partyId);
+        partyStateRepository.deleteById(partyId);
+        partyJoinTokenRepository.deleteByPartyId(partyId);
+        partyRepository.deleteById(partyId);
     }
 
     public GetPartySnapshotResponse getPartySnapshot(@Valid GetPartySnapshotRequest request) {

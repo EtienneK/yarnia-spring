@@ -1,36 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PartyMatchInfo } from "./Menu.tsx";
-import {
-  MAX_BOTS_IN_PARTY,
-  MAX_NAME_LENGTH,
-  MAX_PARTY_SIZE,
-  MIN_PARTY_SIZE,
-} from "./rules.ts";
 import Hero from "../components/Hero.tsx";
-//import { useWebSocketService } from "../utils/hooks.ts";
 import { RxStomp } from "@stomp/rx-stomp";
 import SockJS from "sockjs-client/dist/sockjs";
 import { map } from "rxjs";
 import Cookies from "universal-cookie";
-
-// import { PartyBot } from "./bot.ts";
-
-export type GamePhase = "WAITING" | "PLAYING" | "FINISHED";
-
-export interface PartySnapshot {
-  partyPhase: GamePhase;
-  members: Record<
-    string,
-    {
-      name: string;
-      color: string;
-      host: boolean;
-      ready: boolean;
-      connected: boolean;
-      bot: boolean;
-    }
-  >;
-}
+import type { GameSnapshot, PartySnapshot } from "./types.ts";
+import { Lobby } from "./Lobby.tsx";
+import { GamePlay } from "./GamePlay.tsx";
 
 export function Game({
   partyInfo,
@@ -41,6 +18,7 @@ export function Game({
 }) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<PartySnapshot | null>(null);
+  const [gameSnapshot, setGameSnapshot] = useState<GameSnapshot | null>(null);
   const [nameInput, setNameInput] = useState<string>("");
 
   useEffect(() => {
@@ -54,6 +32,7 @@ export function Game({
       cookies.remove("joinToken");
     };
   }, [partyInfo.joinToken, partyInfo.partyId, partyInfo.playerId]);
+
   const clientRef = useRef(new RxStomp());
 
   const publish = useCallback(
@@ -107,6 +86,9 @@ export function Game({
       } else if (errorCode === "full") {
         setConnectionError("Party is full.");
         client.deactivate();
+      } else if (errorCode === "in_progress") {
+        setConnectionError("This game is already in progress.");
+        client.deactivate();
       } else {
         console.error(error);
       }
@@ -114,31 +96,32 @@ export function Game({
 
     const snapshotTopicSub = client
       .watch(`/topic/party/${partyInfo.partyId}/snapshot`)
-      .pipe(map((message) => JSON.parse(message.body)))
+      .pipe(map((message) => JSON.parse(message.body) as PartySnapshot))
       .subscribe((message) => {
         setSnapshot(message);
-        const playerName = message.members[partyInfo.playerId].name;
-        setNameInput(playerName);
-        localStorage.setItem("preferredName", playerName);
+        const playerName = message.members[partyInfo.playerId]?.name;
+        if (playerName) {
+          setNameInput(playerName);
+          localStorage.setItem("preferredName", playerName);
+        }
       });
 
-    // const snapshotQueueSub = client
-    //   .watch("/user/queue/snapshot")
-    //   .pipe(map((message) => JSON.parse(message.body) as PartySnapshot))
-    //   .subscribe((message) => {
-    //     setSnapshot(message);
-    //     if (isFirstUpdate.current) {
-    //       isFirstUpdate.current = false;
-    //       const playerName = message.members[partyInfo.playerId].name;
-    //       setNameInput(playerName);
-    //       localStorage.setItem("preferredName", playerName);
-    //     }
-    //   });
+    const gameTopicSub = client
+      .watch(`/topic/party/${partyInfo.partyId}/game`)
+      .pipe(map((message) => JSON.parse(message.body) as GameSnapshot))
+      .subscribe((message) => {
+        setGameSnapshot(message);
+      });
 
     const connectedSub = client.connected$.subscribe(() => {
       publish({
         destination: `/app/party/${partyInfo.partyId}/user-snapshot`,
         body: { partyId: partyInfo.partyId },
+      });
+      // Also ask for the game snapshot in case we (re)connected mid-game.
+      publish({
+        destination: `/app/party/${partyInfo.partyId}/game/snapshot`,
+        body: true,
       });
     });
 
@@ -146,42 +129,12 @@ export function Game({
       connectedSub.unsubscribe();
       errorSub.unsubscribe();
       snapshotTopicSub.unsubscribe();
-      // snapshotQueueSub.unsubscribe();
+      gameTopicSub.unsubscribe();
       client.deactivate();
     };
   }, [partyInfo.joinToken, partyInfo.partyId, partyInfo.playerId, publish]);
 
-  // const botsRef = useRef<PartyBot[]>([]);
   const nameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  //   const partyMatch = useActor<'partyMatch'>({
-  //     name: 'partyMatch',
-  //     key: [matchInfo.matchId],
-  //     params: {
-  //       playerId: matchInfo.playerId,
-  //       joinToken: matchInfo.joinToken,
-  //     },
-  //     enabled: true,
-  //   });
-
-  //   (partyMatch as any).useEvent(
-  //     'partyUpdate',
-  //     (partySnapshot: PartySnapshot): void => {
-  //       return setSnapshot(partySnapshot)
-  //     },
-  //   )
-
-  //   useEffect(() => {
-  //     console.log('Connection status: ', partyMatch.connStatus)
-  //     if (partyMatch.connStatus === 'connected') {
-  //       partyMatch.connection?.getSnapshot().then((snap: unknown) => {
-  //         const s = snap as PartySnapshot
-  //         setSnapshot(s)
-  //         const myName = s.members[matchInfo.playerId]?.name
-  //         if (myName) setNameInput(myName)
-  //       })
-  //     }
-  //   }, [matchInfo.playerId, partyMatch.connection, partyMatch.connStatus])
 
   const onNameChange = (value: string) => {
     setNameInput(value);
@@ -200,34 +153,6 @@ export function Game({
     setNameInput(localStorage.getItem("preferredName") as string);
   };
 
-  const addBot = () => {
-    publish({
-      destination: `/app/party/${partyInfo.partyId}/addBot`,
-      body: true,
-    });
-  };
-
-  const toggleReady = () => {
-    publish({
-      destination: `/app/party/${partyInfo.partyId}/setReady`,
-      body: !myMember?.ready,
-    });
-  };
-
-  const startGame = () => {
-    publish({
-      destination: `/app/party/${partyInfo.partyId}/startGame`,
-      body: true,
-    });
-  };
-
-  const myMember = snapshot?.members[partyInfo.playerId];
-  const isHost = myMember?.host ?? false;
-  const memberList = snapshot ? Object.entries(snapshot.members) : [];
-
-  const waitingForReady = () => memberList.findIndex((m) => !m[1].ready) > -1;
-  const needMorePlayers = () => MIN_PARTY_SIZE - memberList.length > 0;
-
   if (!snapshot || connectionError) {
     return (
       <Hero>
@@ -242,149 +167,63 @@ export function Game({
           )}
           {connectionError && <>{connectionError}</>}
         </p>
-        <button
-          className="btn btn-secondary"
-          onClick={() => {
-            onLeave();
-          }}
-        >
+        <button className="btn btn-secondary" onClick={onLeave}>
           Leave
         </button>
       </Hero>
     );
   }
 
+  const inGame = snapshot.partyPhase !== "WAITING";
+
   return (
-    <div className="bg-base-200 min-h-screen text-center p-3 pt-10 m-auto max-w-xl">
-      <div className="app">
-        <div>
-          <div className="mb-10">
-            <div className="text-xl mb-1 text-gray-500">Join Code:</div>
-            <div className="font-mono text-4xl tracking-widest text-center">
-              {partyInfo.joinCode}
-            </div>
-          </div>
+    <div className="bg-base-200 min-h-screen text-center p-3 pt-6 m-auto max-w-xl">
+      {!inGame && (
+        <Lobby
+          joinCode={partyInfo.joinCode}
+          snapshot={snapshot}
+          myPlayerId={partyInfo.playerId}
+          nameInput={nameInput}
+          onNameChange={onNameChange}
+          onNameBlur={onNameBlur}
+          onToggleReady={() =>
+            publish({
+              destination: `/app/party/${partyInfo.partyId}/setReady`,
+              body: !snapshot.members[partyInfo.playerId]?.ready,
+            })
+          }
+          onStartGame={() =>
+            publish({
+              destination: `/app/party/${partyInfo.partyId}/startGame`,
+              body: true,
+            })
+          }
+          onAddBot={() =>
+            publish({
+              destination: `/app/party/${partyInfo.partyId}/addBot`,
+              body: true,
+            })
+          }
+          onLeave={onLeave}
+        />
+      )}
 
-          <label className="block text-gray-500 text-sm text-left">
-            Your Name
-          </label>
-          <input
-            type="text"
-            placeholder="Your name"
-            value={nameInput}
-            onChange={(e) => onNameChange(e.target.value)}
-            onBlur={() => onNameBlur()}
-            className="input w-full mb-5 text-lg"
-            maxLength={MAX_NAME_LENGTH}
-          />
+      {inGame && !gameSnapshot && (
+        <p className="mt-10">
+          <span className="loading loading-spinner loading-sm mr-2"></span>
+          Loading game...
+        </p>
+      )}
 
-          <div className="text-left mb-10">
-            <div className="text-lg font-bold">
-              Players ({memberList.length})
-            </div>
-            {memberList.map(([id, member]) => (
-              <div key={id} className="party-member-row">
-                {member.ready ? (
-                  <span className="mr-2">✅</span>
-                ) : (
-                  <span className="mr-2">❌</span>
-                )}
-                <span
-                  className="party-member-name"
-                  style={{ color: member.color }}
-                >
-                  {member.name}
-                  {id === partyInfo.playerId ? " (You)" : ""}
-                </span>
-                <span className="party-member-badges">
-                  {member.host && (
-                    <span className="badge badge-primary ml-2">Host</span>
-                  )}
-                  {member.bot && (
-                    <span className="badge badge-secondary ml-2">Bot</span>
-                  )}
-                  {!member.connected && (
-                    <span className="badge badge-error ml-2">Disconnected</span>
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {needMorePlayers() && (
-            <p className="text-gray-500 mb-10">
-              <span className="loading loading-spinner loading-sm mr-2"></span>
-              Waiting for {MIN_PARTY_SIZE - memberList.length} more players...
-            </p>
-          )}
-
-          {!needMorePlayers() && waitingForReady() && (
-            <p className="text-gray-500 mb-10">
-              <span className="loading loading-spinner loading-sm mr-2"></span>
-              Waiting for all players to ready-up...
-            </p>
-          )}
-
-          {snapshot.partyPhase === "WAITING" && (
-            <button
-              className={`btn w-full mb-2 ${myMember?.ready ? "btn-secondary" : "btn-success"}`}
-              onClick={toggleReady}
-            >
-              {myMember?.ready ? "Unready" : "Ready"}
-            </button>
-          )}
-
-          {isHost && snapshot.partyPhase !== "PLAYING" && (
-            <button
-              className="btn btn-primary w-full mb-2"
-              onClick={startGame}
-              disabled={needMorePlayers() || waitingForReady()}
-            >
-              Start Game
-            </button>
-          )}
-
-          {isHost &&
-            Object.values(snapshot.members).filter((m) => m.bot).length <
-              MAX_BOTS_IN_PARTY &&
-            Object.keys(snapshot.members).length <= MAX_PARTY_SIZE && (
-              <button className="btn btn-secondary" onClick={addBot}>
-                Add Bot
-              </button>
-            )}
-          <button
-            className="btn btn-secondary"
-            onClick={() => {
-              onLeave();
-            }}
-          >
-            Leave
-          </button>
-
-          {snapshot?.partyPhase === "PLAYING" && (
-            <div style={{ marginTop: 16, textAlign: "center" }}>
-              <p
-                style={{
-                  color: "#8e8e93",
-                  fontSize: 14,
-                  marginBottom: 12,
-                }}
-              >
-                Game is in progress
-              </p>
-            </div>
-          )}
-
-          {snapshot?.partyPhase === "FINISHED" && (
-            <div
-              className="match-found-text"
-              style={{ textAlign: "center", marginTop: 16 }}
-            >
-              Game Complete!
-            </div>
-          )}
-        </div>
-      </div>
+      {inGame && gameSnapshot && (
+        <GamePlay
+          partyInfo={partyInfo}
+          party={snapshot}
+          game={gameSnapshot}
+          publish={publish}
+          onLeave={onLeave}
+        />
+      )}
     </div>
   );
 }

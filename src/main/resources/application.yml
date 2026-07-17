@@ -3,8 +3,34 @@ server:
 spring:
   application:
     name: yarnia
+  config:
+    # Local secrets (API keys etc.) live in this gitignored file - never in here.
+    import: optional:file:./application-local.yml
   threads:
     virtual:
       enabled: true
   jpa:
     show-sql: true
+  ai:
+    # Provider-agnostic: bots use Spring AI's ChatModel. Swap the starter in pom.xml
+    # and this block to change provider. Without an API key, bots fall back to
+    # canned lines (see CannedBotBrain) so the game still works.
+    deepseek:
+      api-key: ${DEEPSEEK_API_KEY:}
+      chat:
+        options:
+          model: deepseek-chat
+          max-tokens: 300
+
+# Game rules (defaults shown; override for faster dev/test rounds)
+yarnia:
+  game:
+    total-rounds: 10
+    submit-seconds: 60
+    vote-seconds: 30
+    reveal-seconds: 10
+    winner-bonus: 2
+    final-round-multiplier: 2
+    max-submission-length: 120
+    # Once everyone has submitted/voted, the phase ends after this grace period
+    early-advance-delay-seconds: 2

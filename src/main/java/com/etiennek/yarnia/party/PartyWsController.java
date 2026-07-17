@@ -31,6 +31,7 @@ public class PartyWsController {
 
     private @Autowired PartyService partyService;
     private @Autowired PartyMemberRepository partyMemberRepository;
+    private @Autowired org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     PartyWsController(PartyStateRepository partyStateRepository) {
         this.partyStateRepository = partyStateRepository;
@@ -107,6 +108,7 @@ public class PartyWsController {
         }
 
         partyStateRepository.save(partyState.withPartyPhase(PartyPhase.PLAYING));
+        eventPublisher.publishEvent(new PartyEvents.GameStartedEvent(partyIdUuid));
 
         return snapshot(partyId);
     }

@@ -29,6 +29,17 @@ public class AddMemberService {
 
             final var members = partyMemberRepository.findByPartyStateId(partyId);
 
+            final var existing = members.stream().filter(m -> m.getId().equals(playerId)).findFirst();
+            if (existing.isPresent()) {
+                // Reconnect: keep name/host/ready/score, just mark connected again.
+                partyMemberRepository.save(existing.get().withConnected(true));
+                return new AddMemberResponse(true, null);
+            }
+
+            if (!partyState.getPartyPhase().equals(Constants.PartyPhase.WAITING)) {
+                return new AddMemberResponse(false, "in_progress");
+            }
+
             if (members.size() >= Constants.MAX_PARTY_SIZE) {
                 return new AddMemberResponse(false, "full");
             }
@@ -39,16 +50,18 @@ public class AddMemberService {
 
             final var playerName = request.getPlayerName() == null ? Utils.generatePlayerName() : request.getPlayerName();
             final var isHost = members.stream().filter(m -> m.isHost() && !m.getId().equals(playerId)).count() <= 0;
+            final var takenColors = members.stream().map(PartyMember::getColor).toList();
 
             partyMemberRepository.save(new PartyMember(
                     playerId,
                     playerName,
-                    Utils.getPlayerColor(playerId),
+                    Utils.pickPlayerColor(takenColors),
                     isHost,
                     request.isBot(),
                     true,
                     request.isBot(),
                     request.getBotPersona(),
+                    0,
                     partyState));
 
             return new AddMemberResponse(true, null);

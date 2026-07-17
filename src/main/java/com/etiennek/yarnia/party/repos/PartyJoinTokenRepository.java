@@ -9,4 +9,5 @@ import com.etiennek.yarnia.party.Entities.PartyJoinToken;
 public interface PartyJoinTokenRepository extends JpaRepository<PartyJoinToken, UUID> {
     boolean existsByIdAndPartyIdAndPlayerId(UUID id, UUID partyId, UUID playerId);
     void deleteByPartyId(UUID partyId);
+    void deleteByPartyIdAndPlayerId(UUID partyId, UUID playerId);
 }

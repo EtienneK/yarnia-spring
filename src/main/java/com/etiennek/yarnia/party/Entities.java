@@ -90,6 +90,9 @@ public final class Entities {
         @Column
         private final String botPersona;
 
+        @Column(nullable = false)
+        private final int score;
+
         @ManyToOne(optional = false)
         private final PartyState partyState;
     }
