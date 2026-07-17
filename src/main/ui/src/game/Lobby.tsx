@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import {
   MAX_BOTS_IN_PARTY,
   MAX_NAME_LENGTH,
@@ -5,6 +6,7 @@ import {
   MIN_PARTY_SIZE,
 } from "./rules.ts";
 import type { PartySnapshot } from "./types.ts";
+import { LobbyMusic } from "./music.ts";
 
 export function Lobby({
   joinCode,
@@ -29,6 +31,24 @@ export function Lobby({
   onAddBot: () => void;
   onLeave: () => void;
 }) {
+  const musicRef = useRef<LobbyMusic | null>(null);
+  const [musicOn, setMusicOn] = useState(
+    () => localStorage.getItem("lobbyMusic") !== "off",
+  );
+
+  useEffect(() => {
+    if (!musicRef.current) musicRef.current = new LobbyMusic();
+    const music = musicRef.current;
+    if (musicOn) music.start();
+    else music.stop();
+    return () => music.stop();
+  }, [musicOn]);
+
+  const toggleMusic = () => {
+    localStorage.setItem("lobbyMusic", musicOn ? "off" : "on");
+    setMusicOn(!musicOn);
+  };
+
   const myMember = snapshot.members[myPlayerId];
   const isHost = myMember?.host ?? false;
   const memberList = Object.entries(snapshot.members);
@@ -39,6 +59,15 @@ export function Lobby({
 
   return (
     <div>
+      <div className="flex justify-end">
+        <button
+          className="btn btn-ghost btn-sm"
+          onClick={toggleMusic}
+          title={musicOn ? "Mute lobby music" : "Play lobby music"}
+        >
+          {musicOn ? "🔊" : "🔇"}
+        </button>
+      </div>
       <div className="mb-10">
         <div className="text-xl mb-1 text-gray-500">Join Code:</div>
         <div className="font-mono text-4xl tracking-widest text-center">

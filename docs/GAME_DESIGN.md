@@ -107,6 +107,9 @@ The full game loop is implemented and verified end-to-end (scripted 3-player gam
   live "n/m submitted", anonymous voting cards (own entry disabled), reveal with authors/votes/
   crown/round points, running scoreboard, final results screen with full story + Play Again.
 - Countdown bars driven by server `phaseEndsAt` (epoch ms).
+- Lobby music: an 8-bar chiptune loop synthesized at runtime with the Web Audio API
+  (`music.ts` — no audio assets). Toggle in the lobby, preference in localStorage,
+  stops when the game starts.
 
 Also fixed pre-existing party-layer bugs: join-token mass deletion on member leave, member
 overwrite on reconnect (now preserves name/host/ready/score), mid-game join rejection
