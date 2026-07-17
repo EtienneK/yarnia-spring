@@ -9,14 +9,32 @@ spring:
   threads:
     virtual:
       enabled: true
+  datasource:
+    # SQLite file DB; games survive restarts. Override the path with YARNIA_DB_PATH.
+    # WAL journal: faster commits now, and safe concurrent readers if the pool ever grows.
+    # busy_timeout: wait instead of erroring if the db is briefly locked (e.g. external tools).
+    url: jdbc:sqlite:${YARNIA_DB_PATH:./data/yarnia.db}?journal_mode=WAL&busy_timeout=5000
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      # SQLite allows a single writer; one connection serializes access and
+      # doubles as the mutual exclusion the pessimistic locks gave us on H2
+      # (SQLite has no SELECT ... FOR UPDATE).
+      maximum-pool-size: 1
   jpa:
     show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.community.dialect.SQLiteDialect
   ai:
     # Provider-agnostic: bots use Spring AI's ChatModel. Swap the starter in pom.xml
     # and this block to change provider. Without an API key, bots fall back to
     # canned lines (see CannedBotBrain) so the game still works.
     deepseek:
-      api-key: ${DEEPSEEK_API_KEY:}
+      # "unset" is a sentinel: the DeepSeek autoconfig refuses to start with an
+      # empty key, and LlmBotBrain treats this value as "no LLM available".
+      api-key: ${DEEPSEEK_API_KEY:unset}
       chat:
         options:
           model: deepseek-chat

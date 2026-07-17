@@ -22,15 +22,27 @@ public class LlmBotBrain implements BotBrain {
 
     private final ObjectProvider<ChatModel> chatModel;
     private final CannedBotBrain fallback;
+    private final String configuredApiKey;
 
-    LlmBotBrain(ObjectProvider<ChatModel> chatModel, CannedBotBrain fallback) {
+    LlmBotBrain(ObjectProvider<ChatModel> chatModel, CannedBotBrain fallback,
+            // Providers create their ChatModel bean even with a placeholder key; don't
+            // waste doomed API calls when the key is the "unset" sentinel or blank.
+            @org.springframework.beans.factory.annotation.Value("${spring.ai.deepseek.api-key:unset}") String configuredApiKey) {
         this.chatModel = chatModel;
         this.fallback = fallback;
+        this.configuredApiKey = configuredApiKey;
+    }
+
+    private ChatModel llm() {
+        if (configuredApiKey == null || configuredApiKey.isBlank() || "unset".equals(configuredApiKey)) {
+            return null;
+        }
+        return chatModel.getIfAvailable();
     }
 
     @Override
     public String continueStory(String persona, List<String> story, boolean moralRound, int maxLen) {
-        final var model = chatModel.getIfAvailable();
+        final var model = llm();
         if (model == null) {
             return fallback.continueStory(persona, story, moralRound, maxLen);
         }
@@ -57,7 +69,7 @@ public class LlmBotBrain implements BotBrain {
 
     @Override
     public int pickVote(String persona, List<String> story, List<String> candidates) {
-        final var model = chatModel.getIfAvailable();
+        final var model = llm();
         if (model == null) {
             return fallback.pickVote(persona, story, candidates);
         }

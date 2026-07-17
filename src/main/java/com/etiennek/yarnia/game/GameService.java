@@ -69,6 +69,29 @@ public class GameService {
         deleteGameData(event.partyId());
     }
 
+    /**
+     * Timers live in memory, so after a restart every persisted in-flight game
+     * would sit on a dead deadline forever. Re-arm them; overdue phases get a
+     * short grace so players have a moment to reconnect.
+     */
+    @EventListener
+    public void onApplicationReady(org.springframework.boot.context.event.ApplicationReadyEvent event) {
+        for (final var state : gameStateRepository.findAll()) {
+            if (state.getPhase() == GamePhase.FINISHED) {
+                continue;
+            }
+            var deadline = state.getPhaseEndsAt();
+            final var earliest = Instant.now().plusSeconds(props.revealSeconds());
+            if (deadline.isBefore(earliest)) {
+                deadline = earliest;
+                gameStateRepository.save(state.withPhaseEndsAt(deadline));
+            }
+            gameTimer.schedule(state.getId(), state.getRoundNumber(), state.getPhase(), deadline);
+            logger.info("re-armed timer for game {} ({} r{})", state.getId(), state.getPhase(),
+                    state.getRoundNumber());
+        }
+    }
+
     @EventListener
     public void onMemberDisconnected(PartyEvents.MemberDisconnectedEvent event) {
         // A leaver might have been the only player everyone was waiting on.

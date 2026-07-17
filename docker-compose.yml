@@ -1,0 +1,36 @@
+services:
+  yarnia:
+    build: .
+    image: yarnia:latest
+    ports:
+      - "3001:3001"
+    volumes:
+      # Named volume for the SQLite database - games survive restarts/rebuilds
+      - yarnia-data:/data
+    environment:
+      # LLM key for the AI players. Without it the game still works -
+      # bots just use canned lines instead of an LLM. ("unset" is a sentinel
+      # the app understands; the :- default also covers an empty variable.)
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-unset}
+
+      # Optional game-rule overrides (defaults shown in application.yml):
+      # YARNIA_GAME_TOTALROUNDS: "10"
+      # YARNIA_GAME_SUBMITSECONDS: "60"
+      # YARNIA_GAME_VOTESECONDS: "30"
+      # YARNIA_GAME_REVEALSECONDS: "10"
+      # YARNIA_GAME_EARLYADVANCEDELAYSECONDS: "2"
+
+      # If you serve the game through a reverse proxy / under another domain,
+      # add that origin here (comma separated) and enable forwarded headers:
+      # YARNIA_ALLOWEDORIGINS: "https://yarnia.example.com"
+      # SERVER_FORWARD_HEADERS_STRATEGY: "framework"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/3001"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  yarnia-data:

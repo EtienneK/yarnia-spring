@@ -40,6 +40,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private @Autowired AddMemberService addMemberService;
     private @Autowired PartyJoinTokenRepository partyJoinTokenRepository;
 
+    /** Extra origins allowed for the WS handshake (same-origin is always allowed). */
+    @org.springframework.beans.factory.annotation.Value("${yarnia.allowed-origins:http://localhost:3000,https://3k.local.etkhome.com}")
+    private String[] allowedOrigins;
+
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(new MyChannelInterceptor());
@@ -54,7 +58,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOrigins("http://localhost:3000", "https://3k.local.etkhome.com")
+                .setAllowedOrigins(allowedOrigins)
                 .setHandshakeHandler(new CustomHandshakeHandler())
                 .withSockJS();
     }

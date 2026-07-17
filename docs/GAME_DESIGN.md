@@ -163,8 +163,10 @@ These were open questions; sensible defaults were chosen and implemented:
 
 ## Open questions (remaining)
 
-1. **Persistence:** H2 is in-memory; a server restart kills all games (client refresh mid-game
-   *is* handled). Move to file-backed H2/Postgres if games should survive restarts.
+1. ~~**Persistence**~~ **Resolved 2026-07-17:** SQLite (WAL, single-connection pool standing in
+   for `SELECT FOR UPDATE`, which SQLite lacks) at `./data/yarnia.db` / `YARNIA_DB_PATH`
+   (Docker volume `/data`). Games survive restarts; `GameService` re-arms phase timers on
+   startup with a short grace for overdue deadlines.
 2. **Content filtering:** no profanity filtering on submissions/names yet.
-3. **LLM key management:** bots use canned lines unless `ANTHROPIC_API_KEY` is set (or another
+3. **LLM key management:** bots use canned lines unless `DEEPSEEK_API_KEY` is set (or another
    Spring AI provider starter is swapped in via `pom.xml` + `spring.ai.*` config).

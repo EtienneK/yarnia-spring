@@ -3,6 +3,9 @@ target/
 
 ### Local secrets (API keys) — never commit ###
 application-local.yml
+
+### Local SQLite database ###
+data/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
