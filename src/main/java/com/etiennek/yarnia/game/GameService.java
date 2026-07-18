@@ -56,6 +56,7 @@ public class GameService {
     private @Autowired GameProperties props;
     private @Autowired GameTimer gameTimer;
     private @Autowired BotCoordinator botCoordinator;
+    private @Autowired org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     // ------------------------------------------------------------------ events
 
@@ -270,6 +271,7 @@ public class GameService {
         final var deadline = Instant.now().plusSeconds(props.revealSeconds());
         gameStateRepository.save(state.withPhase(GamePhase.REVEAL).withPhaseEndsAt(deadline));
         gameTimer.schedule(partyId, round, GamePhase.REVEAL, deadline);
+        eventPublisher.publishEvent(new GameEvents.RoundRevealed(partyId));
         broadcast(partyId);
     }
 
@@ -283,6 +285,7 @@ public class GameService {
                     .save(partyState.withPartyPhase(PartyPhase.FINISHED)));
             template.convertAndSend("/topic/party/" + partyId + "/snapshot",
                     partyService.getPartySnapshot(new GetPartySnapshotRequest(partyId)));
+            eventPublisher.publishEvent(new GameEvents.GameFinished(partyId));
             broadcast(partyId);
             return;
         }

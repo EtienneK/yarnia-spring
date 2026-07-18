@@ -5,9 +5,10 @@ import { RxStomp } from "@stomp/rx-stomp";
 import SockJS from "sockjs-client/dist/sockjs";
 import { map } from "rxjs";
 import Cookies from "universal-cookie";
-import type { GameSnapshot, PartySnapshot } from "./types.ts";
+import type { ChatMessage, GameSnapshot, PartySnapshot } from "./types.ts";
 import { Lobby } from "./Lobby.tsx";
 import { GamePlay } from "./GamePlay.tsx";
+import { Chat } from "./Chat.tsx";
 import { sound } from "./audio.ts";
 
 export function Game({
@@ -24,6 +25,10 @@ export function Game({
   const [soundOn, setSoundOn] = useState(
     () => localStorage.getItem("sound") !== "off",
   );
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
+  const chatOpenRef = useRef(false);
 
   useEffect(() => {
     sound.setEnabled(soundOn);
@@ -136,6 +141,26 @@ export function Game({
         setGameSnapshot(message);
       });
 
+    const chatTopicSub = client
+      .watch(`/topic/party/${partyInfo.partyId}/chat`)
+      .pipe(map((message) => JSON.parse(message.body) as ChatMessage))
+      .subscribe((message) => {
+        setChatMessages((prev) =>
+          prev.some((m) => m.id === message.id) ? prev : [...prev, message],
+        );
+        if (message.senderId !== partyInfo.playerId) {
+          sound.chat();
+          if (!chatOpenRef.current) setChatUnread((n) => n + 1);
+        }
+      });
+
+    const chatHistorySub = client
+      .watch(`/topic/party/${partyInfo.partyId}/chat-history-${partyInfo.playerId}`)
+      .pipe(map((message) => JSON.parse(message.body) as ChatMessage[]))
+      .subscribe((history) => {
+        setChatMessages(history);
+      });
+
     const connectedSub = client.connected$.subscribe(() => {
       publish({
         destination: `/app/party/${partyInfo.partyId}/user-snapshot`,
@@ -146,6 +171,10 @@ export function Game({
         destination: `/app/party/${partyInfo.partyId}/game/snapshot`,
         body: true,
       });
+      publish({
+        destination: `/app/party/${partyInfo.partyId}/chat-history`,
+        body: true,
+      });
     });
 
     return () => {
@@ -153,6 +182,8 @@ export function Game({
       errorSub.unsubscribe();
       snapshotTopicSub.unsubscribe();
       gameTopicSub.unsubscribe();
+      chatTopicSub.unsubscribe();
+      chatHistorySub.unsubscribe();
       client.deactivate();
     };
   }, [partyInfo.joinToken, partyInfo.partyId, partyInfo.playerId, publish]);
@@ -174,6 +205,22 @@ export function Game({
 
   const onNameBlur = () => {
     setNameInput(localStorage.getItem("preferredName") as string);
+  };
+
+  const toggleChat = () => {
+    setChatOpen((open) => {
+      const next = !open;
+      chatOpenRef.current = next;
+      if (next) setChatUnread(0);
+      return next;
+    });
+  };
+
+  const sendChat = (text: string) => {
+    publish({
+      destination: `/app/party/${partyInfo.partyId}/chat`,
+      body: text,
+    });
   };
 
   if (!snapshot || connectionError) {
@@ -251,6 +298,15 @@ export function Game({
           onToggleSound={toggleSound}
         />
       )}
+
+      <Chat
+        messages={chatMessages}
+        unread={chatUnread}
+        open={chatOpen}
+        onToggle={toggleChat}
+        onSend={sendChat}
+        myPlayerId={partyInfo.playerId}
+      />
     </div>
   );
 }

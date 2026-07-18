@@ -117,6 +117,15 @@ The full game loop is implemented and verified end-to-end (scripted 3-player gam
   (voting/reveal), winner-card glow, newest story line + "+points" rise-in, countdown
   pulse in the final 5s, trophy bounce and CSS confetti on the results screen.
   All disabled under `prefers-reduced-motion`.
+- **Party chat (2026-07-18)** (`com.etiennek.yarnia.chat` + `Chat.tsx`): persisted per-party
+  chat (last 100 messages, SQLite, deleted with the party) over WS route
+  `/app/party/{id}/chat` broadcast to `/topic/party/{id}/chat`; history via a per-player
+  reply topic. UI is a floating 💬 button (zero layout space) with an unread badge and a
+  slide-in drawer, available in lobby and in game; chat blip SFX. **Bots participate**:
+  `BotChatService` reacts to human messages (35% chance, 90% when addressed by name),
+  round reveals (35%) and game end (80%) — the LLM gets story + recent chat + event
+  context and may reply "PASS" to stay silent; 25s per-bot cooldown, 2-7s thinking delay,
+  bots never reply to bots. Replies ≤200 chars (inside the 300 max-token output cap).
 
 Also fixed pre-existing party-layer bugs: join-token mass deletion on member leave, member
 overwrite on reconnect (now preserves name/host/ready/score), mid-game join rejection

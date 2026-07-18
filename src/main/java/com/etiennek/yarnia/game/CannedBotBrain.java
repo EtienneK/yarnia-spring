@@ -51,4 +51,24 @@ public class CannedBotBrain implements BotBrain {
     public int pickVote(String persona, List<String> story, List<String> candidates) {
         return -1; // let the coordinator pick randomly
     }
+
+    private static final List<String> CHAT_LINES = List.of(
+            "lol",
+            "haha nice",
+            "ok that was a good one",
+            "robbed. absolutely robbed",
+            "no way that won",
+            "gg",
+            "im using that one next time",
+            "this story took a turn",
+            "cant believe you all voted for that");
+
+    @Override
+    public String chatReply(String persona, List<String> story, List<String> recentChat, String eventContext) {
+        // Stay quiet most of the time; canned bots have little to say.
+        if (RANDOM.nextDouble() < 0.65) {
+            return null;
+        }
+        return CHAT_LINES.get(RANDOM.nextInt(CHAT_LINES.size()));
+    }
 }

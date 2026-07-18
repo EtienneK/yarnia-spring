@@ -54,3 +54,13 @@ export interface GameSnapshot {
 export interface Publish {
   <T>(msg: { destination: string; body: T }): void;
 }
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderColor: string | null;
+  bot: boolean;
+  text: string;
+  at: number;
+}

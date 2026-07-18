@@ -161,6 +161,11 @@ class SoundEngine {
     this.chirp(1000, 1000, 0.03, "square", 0.08);
   }
 
+  /** Soft pop - a chat message arrived. */
+  chat(): void {
+    this.chirp(620, 500, 0.06, "sine", 0.16);
+  }
+
   /** A new phase began. */
   phase(): void {
     this.arpeggio(["A4", "E5"], 0.09, "sine", 0.3);

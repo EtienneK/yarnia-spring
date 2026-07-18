@@ -91,6 +91,34 @@ public class LlmBotBrain implements BotBrain {
         }
     }
 
+    @Override
+    public String chatReply(String persona, List<String> story, List<String> recentChat, String eventContext) {
+        final var model = llm();
+        if (model == null) {
+            return fallback.chatReply(persona, story, recentChat, eventContext);
+        }
+        try {
+            final var response = model.call(
+                    systemPrompt(persona) + "\n\n"
+                            + "The story so far:\n" + String.join("\n", story) + "\n\n"
+                            + "The party chat so far:\n" + String.join("\n", recentChat) + "\n\n"
+                            + "What just happened: " + eventContext + "\n\n"
+                            + "You MAY send one short, casual chat message (at most 200 characters), in"
+                            + " character, reacting to what just happened. Only speak if you genuinely have"
+                            + " something fun or interesting to add - real players don't comment on"
+                            + " everything. If you have nothing to say, reply with exactly: PASS\n"
+                            + "Reply with ONLY the chat message (or PASS) - no quotes, no explanation.");
+            final var text = clean(response, 200);
+            if (text.isEmpty() || text.equalsIgnoreCase("PASS") || text.toUpperCase().startsWith("PASS ")) {
+                return null;
+            }
+            return text;
+        } catch (Exception e) {
+            logger.warn("LLM chatReply failed, staying silent: {}", e.getMessage());
+            return null;
+        }
+    }
+
     private String systemPrompt(String persona) {
         final var who = (persona == null || persona.isBlank())
                 ? "You are an ordinary person with a good sense of humour."

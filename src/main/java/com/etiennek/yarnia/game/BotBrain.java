@@ -14,4 +14,11 @@ public interface BotBrain {
 
     /** Return the index of the candidate the bot votes for, or -1 to let the caller pick randomly. */
     int pickVote(String persona, List<String> story, List<String> candidates);
+
+    /**
+     * Optionally say something in the party chat. eventContext describes what just
+     * happened (a player's message, a round result, the game ending). Return null
+     * to stay silent - bots should only speak when they have something to say.
+     */
+    String chatReply(String persona, List<String> story, List<String> recentChat, String eventContext);
 }
