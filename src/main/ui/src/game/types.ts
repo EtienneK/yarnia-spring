@@ -2,6 +2,7 @@ export type PartyPhase = "WAITING" | "PLAYING" | "FINISHED";
 
 export interface PartySnapshot {
   partyPhase: PartyPhase;
+  publicGame: boolean;
   members: Record<
     string,
     {

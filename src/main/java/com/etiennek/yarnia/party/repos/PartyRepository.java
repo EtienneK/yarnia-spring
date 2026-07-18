@@ -10,4 +10,5 @@ import com.etiennek.yarnia.party.Entities.Party;
 public interface PartyRepository extends JpaRepository<Party, UUID> {
     boolean existsByJoinCode(String joinCode);
     Optional<Party> findByJoinCode(String joinCode);
+    java.util.List<Party> findByPublicGameTrue();
 }

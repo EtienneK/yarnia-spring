@@ -63,7 +63,14 @@ export function Lobby({
         </button>
       </div>
       <div className="mb-10">
-        <div className="text-xl mb-1 text-gray-500">Join Code:</div>
+        <div className="text-xl mb-1 text-gray-500">
+          Join Code:
+          {snapshot.publicGame && (
+            <span className="badge badge-accent ml-2 align-middle" title="Anyone can join this game via matchmaking">
+              Public
+            </span>
+          )}
+        </div>
         <div className="font-mono text-4xl tracking-widest text-center">
           {joinCode}
         </div>

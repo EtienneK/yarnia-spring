@@ -140,6 +140,22 @@ running in Maven builds (invalid `annotationProcessor` scope).
   The game layer will likely follow the same "broadcast a snapshot on every state change" model.
 - `Websocket.tsx` is a leftover scaffolding/demo file, not part of the app flow.
 
+## Public games / matchmaking (2026-07-18)
+
+Hosts choose **private** (default) or **public** when creating a party (toggle in the menu).
+Public games are discoverable: "Join a Public Game" polls `POST /api/party/join-public`
+every 3s (with cancel) until a match is found. Matchmaking picks the **fullest** open public
+lobby (WAITING, not full) so games reach the 3-player minimum sooner; 404 when none exist.
+Public games keep their join code (shareable for direct joins) and show a "Public" badge in
+the lobby. `Party.publicGame` column has a SQL default so ddl-auto migrates existing DBs.
+Known race: two simultaneous matchmakers can be pointed at a lobby with one seat; the loser
+gets the normal "full" error on connect.
+
+**Stress tested (2026-07-18):** 100 concurrent games (1 client + 2 canned bots each, 3 rounds,
+10/6/2s timers, ~10s ramp-up) on SQLite/WAL with the single-connection pool: 100/100 games
+completed, 0 failures, 0 abnormal WebSocket closes, create latency p50 13ms / p95 45ms, no
+game-duration tail (p50 40s, max 46s). SQLite is not the bottleneck at party-game scale.
+
 ## Implemented defaults (owner can veto/tune — all in `yarnia.game.*` config)
 
 These were open questions; sensible defaults were chosen and implemented:

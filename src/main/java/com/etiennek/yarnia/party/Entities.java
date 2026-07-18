@@ -38,6 +38,11 @@ public final class Entities {
 
         @Column(nullable = false)
         private final int playerCount;
+
+        /** Public games are discoverable via matchmaking; the join code still works too.
+         *  Default in the column definition so ddl-auto can add it to existing SQLite rows. */
+        @Column(columnDefinition = "boolean default false not null")
+        private final boolean publicGame;
     }
 
     @Entity

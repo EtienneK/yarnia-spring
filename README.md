@@ -110,3 +110,9 @@ Fast test games: shrink the rules via env vars, e.g.
 ```sh
 YARNIA_GAME_TOTALROUNDS=2 YARNIA_GAME_SUBMITSECONDS=10 ./mvnw spring-boot:run
 ```
+
+## Tests
+
+Headless end-to-end and stress tests live in [scripts/](scripts/) — they drive the real
+server over REST + websockets (full games with bots, public matchmaking, 100 concurrent
+games). See [scripts/README.md](scripts/README.md) for how to run them.

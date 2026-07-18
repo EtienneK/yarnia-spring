@@ -1,5 +1,6 @@
 package com.etiennek.yarnia.party;
 
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -47,7 +48,7 @@ public class PartyService {
     private @Autowired PartyJoinTokenRepository partyJoinTokenRepository;
     private @Autowired AddMemberService addMemberService;
 
-    public CreatePartyResponse createParty() {
+    public CreatePartyResponse createParty(boolean publicGame) {
         final var playerId = UUID.randomUUID();
 
         String joinCode;
@@ -58,7 +59,7 @@ public class PartyService {
             uniqueJoinCodeFound = !partyRepository.existsByJoinCode(joinCode);
         } while (!uniqueJoinCodeFound && ++uniqueJoinCodeFoundRetries < 5);
 
-        final var party = partyRepository.save(new Party(joinCode, 1));
+        final var party = partyRepository.save(new Party(joinCode, 1, publicGame));
         final var partyState = new PartyState(party.getId(), PartyPhase.WAITING);
         partyStateRepository.save(partyState);
 
@@ -79,7 +80,33 @@ public class PartyService {
         return new JoinPartyResponse(
                 party.getId(),
                 playerId,
-                partyJoinToken.getId());
+                partyJoinToken.getId(),
+                party.getJoinCode());
+    }
+
+    /**
+     * Matchmaking: join an open public game (WAITING, not full). Prefers the
+     * fullest lobby so games reach the minimum player count sooner.
+     */
+    public JoinPartyResponse joinPublicParty() {
+        final var candidate = partyRepository.findByPublicGameTrue().stream()
+                .filter(party -> partyStateRepository.findById(party.getId())
+                        .map(s -> s.getPartyPhase().equals(PartyPhase.WAITING))
+                        .orElse(false))
+                .map(party -> Map.entry(party, partyMemberRepository.findByPartyStateId(party.getId()).size()))
+                .filter(e -> e.getValue() < Constants.MAX_PARTY_SIZE)
+                .max(java.util.Map.Entry.comparingByValue())
+                .map(java.util.Map.Entry::getKey)
+                .orElseThrow();
+
+        final var playerId = UUID.randomUUID();
+        final var partyJoinToken = partyJoinTokenRepository.save(new PartyJoinToken(candidate.getId(), playerId));
+
+        return new JoinPartyResponse(
+                candidate.getId(),
+                playerId,
+                partyJoinToken.getId(),
+                candidate.getJoinCode());
     }
 
     public void addBot(AddBotRequest request) {
@@ -147,8 +174,11 @@ public class PartyService {
                 .orElseThrow(() -> new IllegalStateException("party state does not exist"));
 
         final var members = partyMemberRepository.findByPartyStateId(request.getPartyId());
+        final var publicGame = partyRepository.findById(request.getPartyId())
+                .map(p -> p.isPublicGame())
+                .orElse(false);
 
-        final var ret = new GetPartySnapshotResponse(partyState.getPartyPhase());
+        final var ret = new GetPartySnapshotResponse(partyState.getPartyPhase(), publicGame);
         for (PartyMember partyMember : members) {
             ret.getMembers().put(partyMember.getId(),
                     new PartyMemberSnapshotResponse(

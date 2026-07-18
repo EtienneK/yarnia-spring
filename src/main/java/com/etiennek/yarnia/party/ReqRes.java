@@ -18,6 +18,12 @@ import lombok.RequiredArgsConstructor;
 
 public final class ReqRes {
     @Data
+    @NoArgsConstructor
+    public static class CreatePartyRequest {
+        private boolean publicGame;
+    }
+
+    @Data
     @RequiredArgsConstructor
     public static class CreatePartyResponse {
         @NonNull
@@ -48,6 +54,8 @@ public final class ReqRes {
         private final UUID playerId;
         @NonNull
         private final UUID joinToken;
+        @NonNull
+        private final String joinCode;
     }
 
     @Data
@@ -82,6 +90,7 @@ public final class ReqRes {
     public static class GetPartySnapshotResponse {
         @NonNull
         private final PartyPhase partyPhase;
+        private final boolean publicGame;
         @NonNull
         private final Map<UUID, PartyMemberSnapshotResponse> members = new HashMap<>();
     }

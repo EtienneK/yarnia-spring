@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Hero from '../components/Hero.tsx'
 import { PARTY_CODE_LENGTH } from './rules.ts'
 
@@ -19,6 +19,15 @@ export function Menu({
   const [joinCode, setJoinCode] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
+  const [hostPublic, setHostPublic] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const searchingRef = useRef(false)
+
+  useEffect(() => {
+    return () => {
+      searchingRef.current = false
+    }
+  }, [])
 
   const createParty = async () => {
     setStatus('loading')
@@ -29,7 +38,7 @@ export function Menu({
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ playerName: localStorage.getItem('preferredName') ?? undefined }),
+            body: JSON.stringify({ publicGame: hostPublic }),
         });
 
         if (!response.ok) {
@@ -42,6 +51,40 @@ export function Menu({
       setError(err instanceof Error ? err.message : String(err))
       setStatus('error')
     }
+  }
+
+  // Matchmaking: poll for an open public game until one appears or we cancel.
+  const joinPublic = async () => {
+    setError('')
+    setStatus('idle')
+    setSearching(true)
+    searchingRef.current = true
+    while (searchingRef.current) {
+      try {
+        const response = await fetch('/api/party/join-public', { method: 'POST' })
+        if (response.ok) {
+          searchingRef.current = false
+          setSearching(false)
+          onReady(await response.json())
+          return
+        }
+        if (response.status !== 404) {
+          throw new Error('Unknown error: ' + response.status)
+        }
+      } catch (err) {
+        searchingRef.current = false
+        setSearching(false)
+        setError(err instanceof Error ? err.message : String(err))
+        setStatus('error')
+        return
+      }
+      await new Promise((resolve) => setTimeout(resolve, 3000))
+    }
+  }
+
+  const cancelSearch = () => {
+    searchingRef.current = false
+    setSearching(false)
   }
 
   const joinParty = async () => {
@@ -79,13 +122,50 @@ export function Menu({
     <Hero>
       <h1 className="text-5xl font-bold mb-10">Yarnia</h1>
 
+      <label className="label cursor-pointer justify-center gap-3 mb-2">
+        <input
+          type="checkbox"
+          className="toggle toggle-primary"
+          checked={hostPublic}
+          onChange={(e) => setHostPublic(e.target.checked)}
+          disabled={searching}
+        />
+        <span>Public game — anyone can join</span>
+      </label>
       <button
         className="btn btn-primary btn-block mb-5"
         onClick={() => void createParty()}
-        disabled={status === 'loading'}
+        disabled={status === 'loading' || searching}
       >
-        {status === 'loading' ? 'Loading...' : 'Host New Game'}
+        {status === 'loading' ? 'Loading...' : hostPublic ? 'Host Public Game' : 'Host Private Game'}
       </button>
+
+      <div className="flex items-center gap-3 mb-5">
+        <div className="flex-1 h-px bg-gray-500" />
+        <span className="text-gray-500 text-sm">OR</span>
+        <div className="flex-1 h-px bg-gray-500" />
+      </div>
+
+      {!searching && (
+        <button
+          className="btn btn-accent btn-block mb-5"
+          onClick={() => void joinPublic()}
+          disabled={status === 'loading'}
+        >
+          Join a Public Game
+        </button>
+      )}
+      {searching && (
+        <div className="mb-5">
+          <p className="text-gray-500 mb-3">
+            <span className="loading loading-spinner loading-sm mr-2"></span>
+            Searching for an open game...
+          </p>
+          <button className="btn btn-ghost btn-sm" onClick={cancelSearch}>
+            Cancel
+          </button>
+        </div>
+      )}
 
       <div className="flex items-center gap-3 mb-5">
         <div className="flex-1 h-px bg-gray-500" />
@@ -104,7 +184,7 @@ export function Menu({
       <button
         className="btn btn-primary btn-block mb-10"
         onClick={() => void joinParty()}
-        disabled={status === 'loading' || joinCode.trim().length !== PARTY_CODE_LENGTH}
+        disabled={status === 'loading' || searching || joinCode.trim().length !== PARTY_CODE_LENGTH}
       >
         {status === 'loading' ? 'Loading...' : 'Join Party'}
       </button>
