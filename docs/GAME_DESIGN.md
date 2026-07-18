@@ -117,6 +117,12 @@ The full game loop is implemented and verified end-to-end (scripted 3-player gam
   (voting/reveal), winner-card glow, newest story line + "+points" rise-in, countdown
   pulse in the final 5s, trophy bounce and CSS confetti on the results screen.
   All disabled under `prefers-reduced-motion`.
+- **Retro 8-bit look (2026-07-18)**: Silkscreen pixel font (bundled in
+  `public/fonts/silkscreen/` with its freeware license readme; applied globally), square
+  corners everywhere, chunky 2px borders, hard offset shadows with a press-down effect on
+  buttons, uppercase buttons, thick square progress bars, and a subtle CRT scanline overlay.
+  daisyUI's default light/dark **colors are unchanged** — the player palette is
+  contrast-validated against them, so restyle shapes/type, not colors.
 - **Party chat (2026-07-18)** (`com.etiennek.yarnia.chat` + `Chat.tsx`): persisted per-party
   chat (last 100 messages, SQLite, deleted with the party) over WS route
   `/app/party/{id}/chat` broadcast to `/topic/party/{id}/chat`; history via a per-player

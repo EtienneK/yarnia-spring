@@ -1,6 +1,85 @@
 @import "tailwindcss";
 @plugin "daisyui/index.js"; /** @see: https://github.com/saadeghi/daisyui/issues/4505 */
 
+/* ---------- retro 8-bit theme ---------- */
+/* Silkscreen by Jason Kottke (free for personal/corporate use - see
+   /fonts/silkscreen/readme.txt). Colors stay daisyUI's defaults: the player
+   palette is contrast-validated against them. */
+
+@font-face {
+  font-family: "Silkscreen";
+  src: url("/fonts/silkscreen/slkscr.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Silkscreen";
+  src: url("/fonts/silkscreen/slkscrb.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+html {
+  font-family: "Silkscreen", "Courier New", monospace;
+}
+
+/* Pixel aesthetic: no rounded corners, anywhere. */
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+}
+
+/* Chunky borders + hard offset shadows (no blur - pixels don't blur). */
+.btn {
+  border-width: 2px;
+  box-shadow: 3px 3px 0 0 color-mix(in srgb, var(--color-base-content) 35%, transparent);
+  text-transform: uppercase;
+}
+.btn:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+.btn-ghost {
+  box-shadow: none;
+}
+
+.card {
+  border: 2px solid color-mix(in srgb, var(--color-base-content) 25%, transparent);
+  box-shadow: 4px 4px 0 0 color-mix(in srgb, var(--color-base-content) 18%, transparent);
+}
+
+.input,
+.textarea {
+  border-width: 2px;
+}
+
+.badge {
+  border-width: 2px;
+  font-weight: 700;
+}
+
+.progress {
+  height: 1rem;
+  border: 2px solid color-mix(in srgb, var(--color-base-content) 30%, transparent);
+}
+
+/* Subtle CRT scanlines over everything. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.05) 0px,
+    rgba(0, 0, 0, 0.05) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
 /* ---------- animations ---------- */
 
 @keyframes pop-in {
