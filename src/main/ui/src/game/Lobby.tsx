@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   MAX_BOTS_IN_PARTY,
   MAX_NAME_LENGTH,
@@ -6,12 +6,14 @@ import {
   MIN_PARTY_SIZE,
 } from "./rules.ts";
 import type { PartySnapshot } from "./types.ts";
-import { LobbyMusic } from "./music.ts";
+import { sound } from "./audio.ts";
 
 export function Lobby({
   joinCode,
   snapshot,
   myPlayerId,
+  soundOn,
+  onToggleSound,
   nameInput,
   onNameChange,
   onNameBlur,
@@ -23,6 +25,8 @@ export function Lobby({
   joinCode: string;
   snapshot: PartySnapshot;
   myPlayerId: string;
+  soundOn: boolean;
+  onToggleSound: () => void;
   nameInput: string;
   onNameChange: (value: string) => void;
   onNameBlur: () => void;
@@ -31,23 +35,13 @@ export function Lobby({
   onAddBot: () => void;
   onLeave: () => void;
 }) {
-  const musicRef = useRef<LobbyMusic | null>(null);
-  const [musicOn, setMusicOn] = useState(
-    () => localStorage.getItem("lobbyMusic") !== "off",
-  );
-
+  // Blip when someone new shows up.
+  const memberCount = Object.keys(snapshot.members).length;
+  const prevCountRef = useRef(memberCount);
   useEffect(() => {
-    if (!musicRef.current) musicRef.current = new LobbyMusic();
-    const music = musicRef.current;
-    if (musicOn) music.start();
-    else music.stop();
-    return () => music.stop();
-  }, [musicOn]);
-
-  const toggleMusic = () => {
-    localStorage.setItem("lobbyMusic", musicOn ? "off" : "on");
-    setMusicOn(!musicOn);
-  };
+    if (memberCount > prevCountRef.current) sound.join();
+    prevCountRef.current = memberCount;
+  }, [memberCount]);
 
   const myMember = snapshot.members[myPlayerId];
   const isHost = myMember?.host ?? false;
@@ -62,10 +56,10 @@ export function Lobby({
       <div className="flex justify-end">
         <button
           className="btn btn-ghost btn-sm"
-          onClick={toggleMusic}
-          title={musicOn ? "Mute lobby music" : "Play lobby music"}
+          onClick={onToggleSound}
+          title={soundOn ? "Mute sound" : "Unmute sound"}
         >
-          {musicOn ? "🔊" : "🔇"}
+          {soundOn ? "🔊" : "🔇"}
         </button>
       </div>
       <div className="mb-10">
@@ -89,7 +83,7 @@ export function Lobby({
       <div className="text-left mb-10">
         <div className="text-lg font-bold">Players ({memberList.length})</div>
         {memberList.map(([id, member]) => (
-          <div key={id} className="party-member-row">
+          <div key={id} className="party-member-row anim-pop-in">
             {member.ready ? (
               <span className="mr-2">✅</span>
             ) : (

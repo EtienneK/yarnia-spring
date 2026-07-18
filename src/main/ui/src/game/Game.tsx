@@ -8,6 +8,7 @@ import Cookies from "universal-cookie";
 import type { GameSnapshot, PartySnapshot } from "./types.ts";
 import { Lobby } from "./Lobby.tsx";
 import { GamePlay } from "./GamePlay.tsx";
+import { sound } from "./audio.ts";
 
 export function Game({
   partyInfo,
@@ -20,6 +21,28 @@ export function Game({
   const [snapshot, setSnapshot] = useState<PartySnapshot | null>(null);
   const [gameSnapshot, setGameSnapshot] = useState<GameSnapshot | null>(null);
   const [nameInput, setNameInput] = useState<string>("");
+  const [soundOn, setSoundOn] = useState(
+    () => localStorage.getItem("sound") !== "off",
+  );
+
+  useEffect(() => {
+    sound.setEnabled(soundOn);
+  }, [soundOn]);
+
+  const toggleSound = () => {
+    localStorage.setItem("sound", soundOn ? "off" : "on");
+    setSoundOn(!soundOn);
+  };
+
+  // Music follows the party phase; stingers are triggered by the components.
+  const partyPhase = snapshot?.partyPhase;
+  useEffect(() => {
+    if (partyPhase === "WAITING") sound.playMusic("lobby");
+    else if (partyPhase === "PLAYING") sound.playMusic("game");
+    else if (partyPhase === "FINISHED") sound.playMusic("victory");
+    else sound.stopMusic();
+    return () => sound.stopMusic();
+  }, [partyPhase]);
 
   useEffect(() => {
     const cookies = new Cookies(null, { path: "/" });
@@ -183,6 +206,8 @@ export function Game({
           joinCode={partyInfo.joinCode}
           snapshot={snapshot}
           myPlayerId={partyInfo.playerId}
+          soundOn={soundOn}
+          onToggleSound={toggleSound}
           nameInput={nameInput}
           onNameChange={onNameChange}
           onNameBlur={onNameBlur}
@@ -222,6 +247,8 @@ export function Game({
           game={gameSnapshot}
           publish={publish}
           onLeave={onLeave}
+          soundOn={soundOn}
+          onToggleSound={toggleSound}
         />
       )}
     </div>

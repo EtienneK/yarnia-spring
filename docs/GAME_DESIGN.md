@@ -107,9 +107,16 @@ The full game loop is implemented and verified end-to-end (scripted 3-player gam
   live "n/m submitted", anonymous voting cards (own entry disabled), reveal with authors/votes/
   crown/round points, running scoreboard, final results screen with full story + Play Again.
 - Countdown bars driven by server `phaseEndsAt` (epoch ms).
-- Lobby music: an 8-bar chiptune loop synthesized at runtime with the Web Audio API
-  (`music.ts` — no audio assets). Toggle in the lobby, preference in localStorage,
-  stops when the game starts.
+- Audio (`audio.ts`, all Web Audio synthesis — no assets): chiptune lobby loop (116 BPM,
+  A minor), a quieter mellow in-game loop (92 BPM, triangle lead), and an upbeat victory
+  theme on the results screen (132 BPM, C major, four-on-the-floor, opens with a rising
+  fanfare). SFX stingers — player-join blip, submit/vote confirmations, phase chimes,
+  countdown ticks (last 5s), reveal arpeggio. One global 🔊 toggle (lobby + in-game
+  headers), preference in localStorage under "sound".
+- Animations (`index.css` keyframes): phase-transition fade, staggered card pop-ins
+  (voting/reveal), winner-card glow, newest story line + "+points" rise-in, countdown
+  pulse in the final 5s, trophy bounce and CSS confetti on the results screen.
+  All disabled under `prefers-reduced-motion`.
 
 Also fixed pre-existing party-layer bugs: join-token mass deletion on member leave, member
 overwrite on reconnect (now preserves name/host/ready/score), mid-game join rejection
