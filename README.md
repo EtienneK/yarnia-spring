@@ -49,6 +49,7 @@ All settings are environment variables (see the commented examples in
 | `YARNIA_GAME_VOTESECONDS` | `30` | Voting phase timer. |
 | `YARNIA_GAME_REVEALSECONDS` | `10` | Results display time between rounds. |
 | `YARNIA_GAME_EARLYADVANCEDELAYSECONDS` | `2` | Grace period once everyone has acted. |
+| `YARNIA_ADMIN_PASSWORD` | *(unset)* | Enables the read-only admin dashboard at `/admin` (HTTP Basic auth, any username). Unset = dashboard disabled (404). |
 | `YARNIA_ALLOWEDORIGINS` | dev origins | Extra allowed WebSocket origins (comma separated). Same-origin is always allowed. |
 | `SERVER_FORWARD_HEADERS_STRATEGY` | *(unset)* | Set to `framework` when running behind a reverse proxy (TLS termination). |
 

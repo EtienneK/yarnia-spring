@@ -20,6 +20,10 @@ services:
       # YARNIA_GAME_REVEALSECONDS: "10"
       # YARNIA_GAME_EARLYADVANCEDELAYSECONDS: "2"
 
+      # Admin dashboard at /admin (HTTP Basic auth, any username).
+      # Leave unset to disable the dashboard entirely (it 404s).
+      # YARNIA_ADMIN_PASSWORD: "change-me"
+
       # If you serve the game through a reverse proxy / under another domain,
       # add that origin here (comma separated) and enable forwarded headers:
       # YARNIA_ALLOWEDORIGINS: "https://yarnia.example.com"

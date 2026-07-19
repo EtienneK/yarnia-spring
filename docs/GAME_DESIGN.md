@@ -118,9 +118,11 @@ The full game loop is implemented and verified end-to-end (scripted 3-player gam
   pulse in the final 5s, trophy bounce and CSS confetti on the results screen.
   All disabled under `prefers-reduced-motion`.
 - **Retro 8-bit look (2026-07-18)**: Silkscreen pixel font (bundled in
-  `public/fonts/silkscreen/` with its freeware license readme; applied globally), square
-  corners everywhere, chunky 2px borders, hard offset shadows with a press-down effect on
-  buttons, uppercase buttons, thick square progress bars, and a subtle CRT scanline overlay.
+  `public/fonts/silkscreen/` with its freeware license readme) — scoped to **headings,
+  buttons and badges only** after a legibility test by the owner (body/story/chat text stays
+  in the default readable face). Square corners everywhere, chunky 2px borders, hard offset
+  shadows with a press-down effect on buttons, uppercase buttons, thick square progress
+  bars, and a subtle CRT scanline overlay.
   daisyUI's default light/dark **colors are unchanged** — the player palette is
   contrast-validated against them, so restyle shapes/type, not colors.
 - **Party chat (2026-07-18)** (`com.etiennek.yarnia.chat` + `Chat.tsx`): persisted per-party
@@ -161,6 +163,17 @@ gets the normal "full" error on connect.
 10/6/2s timers, ~10s ramp-up) on SQLite/WAL with the single-connection pool: 100/100 games
 completed, 0 failures, 0 abnormal WebSocket closes, create latency p50 13ms / p95 45ms, no
 game-duration tail (p50 40s, max 46s). SQLite is not the bottleneck at party-game scale.
+
+## Admin dashboard (2026-07-18)
+
+Read-only ops dashboard at **`/admin`** (`com.etiennek.yarnia.admin`): summary tiles
+(parties by phase, open public lobbies, humans online, bots, chat total, uptime, db size)
+plus a per-party table (code, visibility, phase, live game round/phase/time-left, members
+with host/bot/connected/score, story + chat counts). Auto-refreshes every 5s; renders via
+`textContent` only (player names are untrusted). Auth: HTTP Basic (any username) against
+`YARNIA_ADMIN_PASSWORD` via a hand-rolled `AdminAuthFilter` (constant-time compare, no
+Spring Security dependency). **Unset password = the entire /admin surface 404s.** Not
+referenced anywhere in the game UI.
 
 ## Implemented defaults (owner can veto/tune — all in `yarnia.game.*` config)
 

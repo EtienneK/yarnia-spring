@@ -13,4 +13,7 @@ import jakarta.persistence.LockModeType;
 public interface GameStateRepository extends JpaRepository<GameState, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<GameState> findById(UUID id);
+
+    /** Non-locking read for dashboards/reporting. */
+    Optional<GameState> findOneById(UUID id);
 }

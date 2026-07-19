@@ -42,6 +42,8 @@ spring:
 
 # Game rules (defaults shown; override for faster dev/test rounds)
 yarnia:
+  # Admin dashboard at /admin (HTTP Basic auth, any username). Empty = disabled (404).
+  admin-password: ${YARNIA_ADMIN_PASSWORD:}
   game:
     total-rounds: 10
     submit-seconds: 60

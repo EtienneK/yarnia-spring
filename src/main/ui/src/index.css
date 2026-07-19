@@ -19,7 +19,12 @@
   font-display: swap;
 }
 
-html {
+/* Pixel font for chrome only - player-written text stays in a readable face. */
+h1,
+h2,
+h3,
+.btn,
+.badge {
   font-family: "Silkscreen", "Courier New", monospace;
 }
 

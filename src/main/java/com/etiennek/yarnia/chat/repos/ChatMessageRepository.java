@@ -12,5 +12,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
 
     List<ChatMessage> findTop12ByPartyIdOrderByCreatedAtDesc(UUID partyId);
 
+    long countByPartyId(UUID partyId);
+
     void deleteByPartyId(UUID partyId);
 }

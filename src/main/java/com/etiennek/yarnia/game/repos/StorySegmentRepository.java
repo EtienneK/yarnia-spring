@@ -10,5 +10,7 @@ import com.etiennek.yarnia.game.GameEntities.StorySegment;
 public interface StorySegmentRepository extends JpaRepository<StorySegment, UUID> {
     List<StorySegment> findByPartyIdOrderByPositionAsc(UUID partyId);
 
+    long countByPartyId(UUID partyId);
+
     void deleteByPartyId(UUID partyId);
 }
